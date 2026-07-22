@@ -6,8 +6,8 @@ export const stripe = process.env.STRIPE_SECRET_KEY
   : null;
 
 export function calculateFees(amount: number) {
-  const platformFee = Math.round(amount * (PLATFORM_FEE_PERCENT / 100) * 100) / 100;
-  const netAmount = Math.round((amount - platformFee) * 100) / 100;
+  const platformFee = Math.round(amount * (PLATFORM_FEE_PERCENT / 100));
+  const netAmount = Math.round(amount - platformFee);
   return { platformFee, netAmount };
 }
 
@@ -31,8 +31,9 @@ export async function createCheckoutSession(params: {
       {
         quantity: 1,
         price_data: {
-          currency: "usd",
-          unit_amount: Math.round(params.amount * 100),
+          currency: "tzs",
+          // TZS is a zero-decimal currency on Stripe
+          unit_amount: Math.round(params.amount),
           product_data: {
             name: params.projectTitle,
             description: "Digital project purchase on 4ward",

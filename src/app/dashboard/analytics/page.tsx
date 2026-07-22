@@ -14,13 +14,13 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const revenueData = [
-  { month: "Jan", revenue: 1200 },
-  { month: "Feb", revenue: 1800 },
-  { month: "Mar", revenue: 2400 },
-  { month: "Apr", revenue: 2100 },
-  { month: "May", revenue: 3200 },
-  { month: "Jun", revenue: 4100 },
-  { month: "Jul", revenue: 4800 },
+  { month: "Jan", revenue: 2900000 },
+  { month: "Feb", revenue: 4400000 },
+  { month: "Mar", revenue: 5900000 },
+  { month: "Apr", revenue: 5100000 },
+  { month: "May", revenue: 7800000 },
+  { month: "Jun", revenue: 10000000 },
+  { month: "Jul", revenue: 11800000 },
 ];
 
 const popularData = [

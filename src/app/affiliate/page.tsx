@@ -49,7 +49,7 @@ export default function AffiliatePage() {
                 <p className="text-xs text-muted-foreground">Referrals</p>
               </div>
               <div className="rounded-xl bg-foreground/5 p-4 text-center">
-                <p className="text-2xl font-bold text-emerald-400">$186</p>
+                <p className="text-2xl font-bold text-emerald-400">TZS 465,000</p>
                 <p className="text-xs text-muted-foreground">Earned</p>
               </div>
             </div>

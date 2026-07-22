@@ -58,5 +58,5 @@ export const STATS = {
   projects: "2,400+",
   creators: "850+",
   universities: "120+",
-  sales: "$1.2M+",
+  sales: "TZS 2.9B+",
 };

@@ -17,7 +17,7 @@ export default function MarketplacePage() {
   const [tech, setTech] = useState("");
   const [university, setUniversity] = useState("");
   const [minRating, setMinRating] = useState(0);
-  const [priceRange, setPriceRange] = useState<"all" | "free" | "paid" | "under50" | "over50">("all");
+  const [priceRange, setPriceRange] = useState<"all" | "free" | "paid" | "under100k" | "over100k">("all");
   const [showFilters, setShowFilters] = useState(false);
 
   const projects = useMemo(() => {
@@ -28,10 +28,10 @@ export default function MarketplacePage() {
       maxPrice = 0;
     } else if (priceRange === "paid") {
       minPrice = 0.01;
-    } else if (priceRange === "under50") {
-      maxPrice = 50;
-    } else if (priceRange === "over50") {
-      minPrice = 50.01;
+    } else if (priceRange === "under100k") {
+      maxPrice = 100000;
+    } else if (priceRange === "over100k") {
+      minPrice = 100001;
     }
 
     return filterProjects({
@@ -143,8 +143,8 @@ export default function MarketplacePage() {
                 <option value="all" className="bg-card text-foreground">All prices</option>
                 <option value="free" className="bg-card text-foreground">Free</option>
                 <option value="paid" className="bg-card text-foreground">Paid</option>
-                <option value="under50" className="bg-card text-foreground">Under $50</option>
-                <option value="over50" className="bg-card text-foreground">$50+</option>
+                <option value="under100k" className="bg-card text-foreground">Under TZS 100,000</option>
+                <option value="over100k" className="bg-card text-foreground">TZS 100,000+</option>
               </select>
             </div>
             <div>

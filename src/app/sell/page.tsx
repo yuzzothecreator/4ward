@@ -31,7 +31,7 @@ export default function SellPage() {
     defaultValues: {
       pricingType: "PAID",
       license: "SOURCE_CODE",
-      price: 29,
+      price: 75000,
       technologyStack: [],
       category: "WEB_APPLICATIONS",
     },
@@ -236,7 +236,7 @@ export default function SellPage() {
               </div>
               {pricingType === "PAID" && (
                 <div>
-                  <Label>Price (USD)</Label>
+                  <Label>Price (TZS)</Label>
                   <Input type="number" step="1" min="1" className="mt-1.5" {...register("price")} />
                 </div>
               )}

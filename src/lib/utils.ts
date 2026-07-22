@@ -5,11 +5,13 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/** Display money in Tanzanian Shillings (TZS). */
 export function formatPrice(price: number) {
   if (price === 0) return "Free";
-  return new Intl.NumberFormat("en-US", {
+  return new Intl.NumberFormat("sw-TZ", {
     style: "currency",
-    currency: "USD",
+    currency: "TZS",
+    maximumFractionDigits: 0,
   }).format(price);
 }
 

@@ -26,7 +26,7 @@ export default function AdminPage() {
         {[
           { label: "Users", value: "1,248" },
           { label: "Pending projects", value: "23" },
-          { label: "GMV (30d)", value: "$42.8K" },
+          { label: "GMV (30d)", value: "TZS 105M" },
           { label: "Open reports", value: "7" },
         ].map((s) => (
           <Card key={s.label}>

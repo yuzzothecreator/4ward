@@ -113,9 +113,9 @@ export function EarnRailMock() {
           <p className="text-xs text-muted">Payouts</p>
         </div>
         <p className="mt-2 font-display text-2xl font-semibold tracking-tight text-foreground">
-          $1,284.00
+          TZS 3,210,000
         </p>
-        <p className="mt-1 text-[11px] text-muted">Available · Stripe connected</p>
+        <p className="mt-1 text-[11px] text-muted">Available · Payouts connected</p>
       </div>
       <div className="grid grid-cols-3 divide-x divide-border">
         {[

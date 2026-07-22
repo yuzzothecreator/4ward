@@ -9,7 +9,7 @@ import { formatPrice, formatNumber } from "@/lib/utils";
 
 const stats = [
   { label: "Total Sales", value: "487", icon: ShoppingBag, change: "+12%" },
-  { label: "Revenue", value: "$18,420", icon: DollarSign, change: "+18%" },
+  { label: "Revenue", value: "TZS 45.2M", icon: DollarSign, change: "+18%" },
   { label: "Project Views", value: "12.4K", icon: Eye, change: "+9%" },
   { label: "Downloads", value: "1,892", icon: Download, change: "+15%" },
 ];
