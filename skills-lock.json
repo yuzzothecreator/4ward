@@ -54,6 +54,12 @@
       "sourceType": "github",
       "skillPath": "prisma-upgrade-v7/SKILL.md",
       "computedHash": "dcc6c71adca6b22f37c5bda5ac7fd63c3bb59495596a22e06a29c7c85371558f"
+    },
+    "tailwind-gradient-builder": {
+      "source": "patricio0312rev/skills",
+      "sourceType": "github",
+      "skillPath": "frontend/tailwind-gradient-builder/SKILL.md",
+      "computedHash": "051b6ee557c070ea5fc357c7aee66f66a1341c9fba184c58cf0be5be78a800f5"
     }
   }
 }

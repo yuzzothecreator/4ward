@@ -205,3 +205,78 @@ body {
 .animate-drift {
   animation: drift 18s ease-in-out infinite;
 }
+
+/* ── Tailwind Gradient Builder animations ── */
+@keyframes gradient-x {
+  0%, 100% {
+    background-size: 200% 200%;
+    background-position: left center;
+  }
+  50% {
+    background-size: 200% 200%;
+    background-position: right center;
+  }
+}
+
+@keyframes gradient-y {
+  0%, 100% {
+    background-size: 200% 200%;
+    background-position: center top;
+  }
+  50% {
+    background-size: 200% 200%;
+    background-position: center bottom;
+  }
+}
+
+@keyframes gradient-xy {
+  0%, 100% {
+    background-size: 400% 400%;
+    background-position: left top;
+  }
+  50% {
+    background-size: 400% 400%;
+    background-position: right bottom;
+  }
+}
+
+@keyframes pulse-gradient {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.72; }
+}
+
+.animate-gradient-x {
+  animation: gradient-x 6s ease infinite;
+}
+
+.animate-gradient-y {
+  animation: gradient-y 6s ease infinite;
+}
+
+.animate-gradient-xy {
+  animation: gradient-xy 8s ease infinite;
+}
+
+.animate-pulse-gradient {
+  animation: pulse-gradient 4s ease-in-out infinite;
+}
+
+.animate-gradient-text {
+  background-size: 200% auto;
+  animation: gradient-x 4s ease infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-drift,
+  .animate-gradient-x,
+  .animate-gradient-y,
+  .animate-gradient-xy,
+  .animate-pulse-gradient,
+  .animate-gradient-text {
+    animation: none;
+  }
+
+  html {
+    scroll-behavior: auto;
+  }
+}

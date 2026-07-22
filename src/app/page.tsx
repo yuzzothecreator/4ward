@@ -6,6 +6,9 @@ import { motion } from "framer-motion";
 import { ArrowRight, ArrowUpRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProjectCard } from "@/components/projects/project-card";
+import { BentoGrid } from "@/components/bento";
+import { MeshGradient } from "@/components/ui/mesh-gradient";
+import { GradientText } from "@/components/ui/gradient-text";
 import { demoProjects } from "@/lib/demo-data";
 import { CATEGORIES, STATS } from "@/lib/constants";
 
@@ -59,7 +62,7 @@ export default function HomePage() {
             className="max-w-2xl"
           >
             <p className="font-display text-5xl font-extrabold tracking-tight text-foreground sm:text-6xl md:text-7xl">
-              4ward
+              <GradientText animated>4ward</GradientText>
             </p>
             <h1 className="font-display mt-5 max-w-xl text-3xl font-semibold leading-[1.15] tracking-tight text-foreground sm:text-4xl md:text-5xl">
               Turn finished campus projects into products people buy.
@@ -98,8 +101,9 @@ export default function HomePage() {
       </section>
 
       {/* ── How it works ── */}
-      <section className="gradient-mesh">
-        <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-28">
+      <section className="relative overflow-hidden">
+        <MeshGradient animated className="opacity-90" />
+        <div className="relative mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-28">
           <div className="max-w-xl">
             <h2 className="font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
               From presentation to payout
@@ -117,18 +121,22 @@ export default function HomePage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: "-40px" }}
                 transition={{ delay: i * 0.08, duration: 0.5 }}
-                className="glass-gradient rounded-3xl p-7"
+                className="rounded-[28px] bg-gradient-to-br from-primary/45 via-border to-accent/35 p-px shadow-xl"
               >
-                <span className="font-mono text-xs tracking-widest text-primary">{step.n}</span>
-                <h3 className="font-display mt-4 text-xl font-semibold text-foreground">
-                  {step.title}
-                </h3>
-                <p className="mt-3 text-sm leading-relaxed text-muted">{step.copy}</p>
+                <div className="glass h-full rounded-[27px] p-7">
+                  <span className="font-mono text-xs tracking-widest text-primary">{step.n}</span>
+                  <h3 className="font-display mt-4 text-xl font-semibold text-foreground">
+                    {step.title}
+                  </h3>
+                  <p className="mt-3 text-sm leading-relaxed text-muted">{step.copy}</p>
+                </div>
               </motion.div>
             ))}
           </div>
         </div>
       </section>
+
+      <BentoGrid />
 
       {/* ── Spotlight project (gradient glass) ── */}
       <section className="bg-background">
@@ -254,7 +262,7 @@ export default function HomePage() {
       {/* ── Closing CTA ── */}
       <section className="px-4 pb-20 pt-4 sm:px-6 sm:pb-28">
         <div className="relative mx-auto max-w-5xl overflow-hidden rounded-[2rem]">
-          <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary to-accent opacity-90" />
+          <div className="absolute inset-0 animate-gradient-x bg-gradient-to-br from-primary via-sky-500 to-accent bg-[length:200%_200%] opacity-95 will-change-[background-position]" />
           <div className="absolute -right-16 -top-16 h-64 w-64 rounded-full bg-white/20 blur-3xl" />
           <div className="absolute -bottom-20 -left-10 h-56 w-56 rounded-full bg-cyan-300/30 blur-3xl" />
 
