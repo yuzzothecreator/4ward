@@ -53,12 +53,15 @@ export default function MarketplacePage() {
   ];
 
   return (
-    <div className="gradient-mesh min-h-screen">
+    <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground sm:text-4xl">Marketplace</h1>
-          <p className="mt-2 text-muted">
-            Discover ready-made student projects, source code, and digital products.
+        <div className="mb-8 border-b border-border pb-8">
+          <p className="font-mono text-xs text-muted-foreground">Marketplace</p>
+          <h1 className="font-display mt-2 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+            Browse campus products
+          </h1>
+          <p className="mt-2 max-w-xl text-[15px] text-muted">
+            Ready-made student projects, source, and docs — filter by craft, stack, or campus.
           </p>
         </div>
 

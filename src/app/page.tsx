@@ -8,28 +8,36 @@ import { Button } from "@/components/ui/button";
 import { ProjectCard } from "@/components/projects/project-card";
 import { BentoGrid } from "@/components/bento";
 import { HeroProductMock } from "@/components/landing/hero-product-mock";
+import {
+  DiscoverRailMock,
+  EarnRailMock,
+  SellRailMock,
+} from "@/components/landing/feature-rails";
 import { demoProjects } from "@/lib/demo-data";
 import { CATEGORIES, STATS } from "@/lib/constants";
 import { easeOutExpo } from "@/lib/motion";
 
-const pillars = [
+const rails = [
   {
     fig: "1.0",
     label: "Sell",
     title: "List after you present",
-    copy: "Upload source, docs, and demos the same week you defend. We review once, then publish.",
+    copy: "Upload source, docs, and demos the same week you defend. We review once, then publish to the shelf.",
+    mock: <SellRailMock />,
   },
   {
     fig: "2.0",
     label: "Discover",
     title: "Buy ready-made systems",
-    copy: "Browse campus projects by stack, university, and license — not vaporware decks.",
+    copy: "Browse campus projects by stack, university, and license — real repos, not vaporware decks.",
+    mock: <DiscoverRailMock />,
   },
   {
     fig: "3.0",
     label: "Earn",
     title: "Get paid on every download",
-    copy: "Stripe today. African rails next. You keep the majority; we handle delivery.",
+    copy: "Stripe today. African rails next. You keep the majority; we handle delivery and licenses.",
+    mock: <EarnRailMock />,
   },
 ];
 
@@ -39,9 +47,9 @@ export default function HomePage() {
 
   return (
     <div className="overflow-x-hidden bg-background">
-      {/* ── Linear-style hero: copy + product ── */}
+      {/* Hero */}
       <section className="relative border-b border-border">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,hsla(217,91%,60%,0.12),transparent_55%)]" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,hsla(217,91%,60%,0.10),transparent_55%)]" />
 
         <div className="relative mx-auto max-w-4xl px-4 pb-12 pt-20 text-center sm:px-6 sm:pt-28">
           <motion.p
@@ -95,7 +103,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── Quiet proof ── */}
+      {/* Quiet proof */}
       <section className="border-b border-border">
         <div className="mx-auto flex max-w-5xl flex-col gap-2 px-4 py-10 text-center sm:px-6 sm:py-12">
           <p className="text-sm text-muted">
@@ -106,52 +114,55 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── Numbered pillars (Linear FIG style) ── */}
+      {/* Product rails — Linear Intake / Plan / Build pattern */}
       <section className="border-b border-border">
         <div className="mx-auto max-w-5xl px-4 py-20 sm:px-6 sm:py-28">
           <p className="text-sm text-muted">A new species of campus marketplace</p>
           <h2 className="font-display mt-3 max-w-2xl text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
             Purpose-built for shipping student work into the real world.
           </h2>
+        </div>
 
-          <div className="mt-16 divide-y divide-border border-y border-border">
-            {pillars.map((p, i) => (
+        <div className="mx-auto max-w-6xl space-y-0 px-4 pb-8 sm:px-6 sm:pb-16">
+          {rails.map((rail, i) => (
+            <div
+              key={rail.fig}
+              className="grid items-center gap-10 border-t border-border py-16 lg:grid-cols-2 lg:gap-16 lg:py-20"
+            >
               <motion.div
-                key={p.fig}
                 initial={{ opacity: 0, y: 16 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: "-40px" }}
-                transition={{ delay: i * 0.06, duration: 0.45, ease: easeOutExpo }}
-                className="grid gap-4 py-10 sm:grid-cols-[120px_1fr] sm:gap-10"
+                transition={{ duration: 0.45, ease: easeOutExpo }}
+                className={i % 2 === 1 ? "lg:order-2" : undefined}
               >
-                <div>
-                  <p className="font-mono text-xs text-muted-foreground">FIG {p.fig}</p>
-                  <p className="mt-1 text-sm font-medium text-primary">{p.label}</p>
-                </div>
-                <div>
-                  <h3 className="font-display text-xl font-semibold text-foreground">{p.title}</h3>
-                  <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted sm:text-base">
-                    {p.copy}
-                  </p>
-                </div>
+                <p className="font-mono text-xs text-muted-foreground">FIG {rail.fig}</p>
+                <p className="mt-1 text-sm font-medium text-primary">{rail.label}</p>
+                <h3 className="font-display mt-3 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+                  {rail.title}
+                </h3>
+                <p className="mt-3 max-w-md text-[15px] leading-relaxed text-muted">
+                  {rail.copy}
+                </p>
               </motion.div>
-            ))}
-          </div>
+              <div className={i % 2 === 1 ? "lg:order-1" : undefined}>{rail.mock}</div>
+            </div>
+          ))}
         </div>
       </section>
 
       <BentoGrid />
 
-      {/* ── Spotlight ── */}
-      <section className="border-b border-border bg-background">
-        <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-24">
+      {/* Spotlight */}
+      <section className="border-b border-border">
+        <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-24">
           <div className="mb-10 max-w-xl">
             <p className="font-mono text-xs text-muted-foreground">4.0 Spotlight</p>
             <h2 className="font-display mt-2 text-3xl font-semibold tracking-tight text-foreground">
               Ready-made work, not slideware
             </h2>
           </div>
-          <div className="grid items-stretch gap-6 lg:grid-cols-12">
+          <div className="grid items-stretch gap-3 lg:grid-cols-12">
             <div className="relative min-h-[320px] overflow-hidden rounded-xl border border-border lg:col-span-7">
               <Image
                 src={spotlight.coverImage}
@@ -173,13 +184,13 @@ export default function HomePage() {
 
             <div className="flex flex-col justify-between rounded-xl border border-border bg-card p-7 sm:p-8 lg:col-span-5">
               <div>
-                <p className="text-sm leading-relaxed text-muted">
+                <p className="text-[15px] leading-relaxed text-muted">
                   {spotlight.shortDescription} Buyers get source, docs, and a clear license.
                 </p>
-                <ul className="mt-6 space-y-2 text-sm text-muted">
+                <ul className="mt-6 space-y-2.5 text-sm text-muted">
                   {spotlight.technologyStack.slice(0, 4).map((t) => (
-                    <li key={t} className="flex items-center gap-2">
-                      <span className="h-1 w-1 rounded-full bg-primary" />
+                    <li key={t} className="flex items-center gap-2.5">
+                      <span className="h-1 w-1 rounded-full bg-foreground/40" />
                       {t}
                     </li>
                   ))}
@@ -196,9 +207,9 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── Categories ── */}
+      {/* Categories */}
       <section className="border-b border-border">
-        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-20">
+        <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
           <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="font-mono text-xs text-muted-foreground">5.0 Browse</p>
@@ -206,7 +217,10 @@ export default function HomePage() {
                 Shop by craft
               </h2>
             </div>
-            <Link href="/marketplace" className="text-sm text-muted transition hover:text-foreground">
+            <Link
+              href="/marketplace"
+              className="text-sm text-muted transition hover:text-foreground"
+            >
               Open marketplace →
             </Link>
           </div>
@@ -225,9 +239,9 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── Featured ── */}
+      {/* Featured */}
       <section className="border-b border-border">
-        <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-24">
+        <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-24">
           <div className="mb-10 flex items-end justify-between gap-4">
             <div>
               <p className="font-mono text-xs text-muted-foreground">6.0 Catalog</p>
@@ -239,7 +253,7 @@ export default function HomePage() {
               <Button variant="outline">Browse all</Button>
             </Link>
           </div>
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {featured.map((project, i) => (
               <ProjectCard key={project.id} project={project} index={i} />
             ))}
@@ -247,7 +261,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── Quote ── */}
+      {/* Quote */}
       <section className="border-b border-border">
         <div className="mx-auto max-w-3xl px-4 py-20 text-center sm:px-6 sm:py-24">
           <blockquote className="font-display text-2xl font-medium leading-snug tracking-tight text-foreground sm:text-3xl">
@@ -257,8 +271,8 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── Quiet CTA (Linear “Built for the future”) ── */}
-      <section className="px-4 py-20 sm:px-6 sm:py-28">
+      {/* Quiet CTA */}
+      <section className="border-b border-border px-4 py-20 sm:px-6 sm:py-28">
         <div className="mx-auto max-w-2xl text-center">
           <h2 className="font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
             Built for campus builders.

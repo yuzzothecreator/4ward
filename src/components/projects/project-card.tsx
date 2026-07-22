@@ -2,101 +2,73 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { motion } from "framer-motion";
-import { Star, Heart, ExternalLink, GraduationCap } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
+import { Heart, Star } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { formatPrice, categoryLabel } from "@/lib/utils";
 import { useAppStore } from "@/store/use-app-store";
+import { easeOutExpo } from "@/lib/motion";
 import type { DemoProject } from "@/lib/demo-data";
 
+/** Quiet product tile — Linear hairline border, used across catalog surfaces */
 export function ProjectCard({ project, index = 0 }: { project: DemoProject; index?: number }) {
+  const reduce = useReducedMotion() ?? false;
   const { toggleFavorite, isFavorite } = useAppStore();
   const fav = isFavorite(project.id);
 
   return (
     <motion.article
-      initial={{ opacity: 0, y: 24 }}
+      initial={{ opacity: 0, y: 16 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
-      transition={{ delay: index * 0.05, duration: 0.4 }}
-      whileHover={{ y: -6 }}
-      className="group overflow-hidden rounded-2xl border border-border bg-foreground/[0.03] backdrop-blur-xl"
+      transition={{ delay: reduce ? 0 : index * 0.05, duration: 0.4, ease: easeOutExpo }}
+      className="group relative overflow-hidden rounded-xl border border-border bg-card transition-colors hover:border-foreground/20"
     >
-      <div className="relative aspect-[16/10] overflow-hidden">
-        <Image
-          src={project.coverImage}
-          alt={project.title}
-          fill
-          className="object-cover transition duration-500 group-hover:scale-105"
-          sizes="(max-width:768px) 100vw, 33vw"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-        <button
-          onClick={() => toggleFavorite(project.id)}
-          className="absolute right-3 top-3 rounded-full bg-black/50 p-2 text-white backdrop-blur-sm transition hover:bg-black/70"
-          aria-label="Favorite"
-        >
-          <Heart className={`h-4 w-4 ${fav ? "fill-pink-500 text-pink-500" : "text-white"}`} />
-        </button>
-        <div className="absolute bottom-3 left-3">
-          <Badge variant="neon">{categoryLabel(project.category)}</Badge>
-        </div>
-        <div className="absolute bottom-3 right-3">
-          <span className="rounded-lg bg-black/60 px-2.5 py-1 text-sm font-semibold text-white backdrop-blur-sm">
-            {formatPrice(project.price)}
-          </span>
-        </div>
-      </div>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.preventDefault();
+          toggleFavorite(project.id);
+        }}
+        className="absolute right-3 top-3 z-10 rounded-md border border-border bg-card/90 p-1.5 text-muted opacity-0 backdrop-blur transition hover:text-foreground group-hover:opacity-100"
+        aria-label={fav ? "Remove from wishlist" : "Add to wishlist"}
+      >
+        <Heart className={`h-3.5 w-3.5 ${fav ? "fill-foreground text-foreground" : ""}`} />
+      </button>
 
-      <div className="space-y-3 p-4">
-        <Link href={`/projects/${project.slug}`}>
-          <h3 className="line-clamp-2 text-base font-semibold text-foreground transition group-hover:text-primary">
-            {project.title}
-          </h3>
-        </Link>
-
-        <div className="flex items-center gap-2 text-xs text-muted">
-          <GraduationCap className="h-3.5 w-3.5 text-primary" />
-          <Link href={`/${project.seller.username}`} className="hover:text-foreground">
-            {project.seller.name}
-          </Link>
-          <span>·</span>
-          <span className="truncate">{project.seller.university}</span>
+      <Link href={`/projects/${project.slug}`} className="block">
+        <div className="relative aspect-[16/10] overflow-hidden border-b border-border">
+          <Image
+            src={project.coverImage}
+            alt={project.title}
+            fill
+            className="object-cover transition duration-500 group-hover:scale-[1.02]"
+            sizes="(max-width:768px) 100vw, 33vw"
+          />
         </div>
-
-        <div className="flex flex-wrap gap-1.5">
-          {project.technologyStack.slice(0, 3).map((tech) => (
-            <Badge key={tech} variant="secondary">
-              {tech}
+        <div className="space-y-3 p-4">
+          <div className="flex items-start justify-between gap-3">
+            <h3 className="line-clamp-2 text-[15px] font-medium leading-snug tracking-tight text-foreground">
+              {project.title}
+            </h3>
+            <span className="shrink-0 text-sm font-medium text-foreground">
+              {formatPrice(project.price)}
+            </span>
+          </div>
+          <p className="truncate text-[13px] text-muted">
+            {project.seller.name} · {project.seller.university}
+          </p>
+          <div className="flex items-center justify-between gap-2">
+            <Badge variant="outline" className="font-normal">
+              {categoryLabel(project.category).split(" ")[0]}
             </Badge>
-          ))}
-          {project.technologyStack.length > 3 && (
-            <Badge variant="outline">+{project.technologyStack.length - 3}</Badge>
-          )}
-        </div>
-
-        <div className="flex items-center justify-between pt-1">
-          <div className="flex items-center gap-1 text-sm text-amber-400">
-            <Star className="h-3.5 w-3.5 fill-amber-400" />
-            <span>{project.rating}</span>
-            <span className="text-muted-foreground">({project.reviewCount})</span>
-          </div>
-          <div className="flex gap-2">
-            {project.demoUrl && (
-              <a href={project.demoUrl} target="_blank" rel="noopener noreferrer">
-                <Button variant="ghost" size="sm">
-                  <ExternalLink className="h-3.5 w-3.5" />
-                  Demo
-                </Button>
-              </a>
-            )}
-            <Link href={`/projects/${project.slug}`}>
-              <Button size="sm">View</Button>
-            </Link>
+            <span className="flex items-center gap-1 text-xs text-muted">
+              <Star className="h-3 w-3 fill-foreground/40 text-foreground/40" />
+              {project.rating}
+            </span>
           </div>
         </div>
-      </div>
+      </Link>
     </motion.article>
   );
 }

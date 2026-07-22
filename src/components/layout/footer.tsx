@@ -1,65 +1,97 @@
 import Link from "next/link";
-import { Code2, Share2, Link2 } from "lucide-react";
 
+const columns = [
+  {
+    title: "Product",
+    links: [
+      { href: "/marketplace", label: "Marketplace" },
+      { href: "/sell", label: "Sell" },
+      { href: "/dashboard", label: "Dashboard" },
+      { href: "/pricing", label: "Pricing" },
+    ],
+  },
+  {
+    title: "Features",
+    links: [
+      { href: "/#product", label: "Automation" },
+      { href: "/dashboard/analytics", label: "Analytics" },
+      { href: "/dashboard/messages", label: "Messaging" },
+      { href: "/affiliate", label: "Affiliate" },
+    ],
+  },
+  {
+    title: "Company",
+    links: [
+      { href: "/about", label: "About" },
+      { href: "/about#security", label: "Security" },
+      { href: "/about#terms", label: "Terms" },
+      { href: "/about#privacy", label: "Privacy" },
+    ],
+  },
+  {
+    title: "Resources",
+    links: [
+      { href: "/sign-in", label: "Log in" },
+      { href: "/sign-up", label: "Sign up" },
+      { href: "/dashboard/admin", label: "Admin" },
+      { href: "/checkout", label: "Checkout" },
+    ],
+  },
+];
+
+/** Linear-style multi-column footer */
 export function Footer() {
   return (
     <footer className="border-t border-border bg-background">
-      <div className="mx-auto grid max-w-7xl gap-10 px-4 py-16 sm:px-6 md:grid-cols-4">
-        <div className="md:col-span-1">
-          <div className="mb-4 flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent font-bold text-primary-foreground">
-              4
+      <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6">
+        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-6">
+          <div className="lg:col-span-2">
+            <Link href="/" className="inline-flex items-center gap-1.5">
+              <span className="flex h-6 w-6 items-center justify-center rounded-md bg-foreground text-xs font-bold text-background">
+                4
+              </span>
+              <span className="text-[15px] font-medium text-foreground">ward</span>
+            </Link>
+            <p className="mt-4 max-w-xs text-[13px] leading-relaxed text-muted">
+              The product system for campus creators. Sell source, docs, and demos after presentation.
+            </p>
+          </div>
+
+          {columns.map((col) => (
+            <div key={col.title}>
+              <h4 className="text-[13px] font-medium text-foreground">{col.title}</h4>
+              <ul className="mt-3 space-y-2">
+                {col.links.map((l) => (
+                  <li key={l.href}>
+                    <Link
+                      href={l.href}
+                      className="text-[13px] text-muted transition hover:text-foreground"
+                    >
+                      {l.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
             </div>
-            <span className="text-lg font-semibold text-foreground">ward</span>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            The student innovation marketplace. Turn academic and personal projects into digital products.
+          ))}
+        </div>
+
+        <div className="mt-14 flex flex-col gap-3 border-t border-border pt-6 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-[12px] text-muted-foreground">
+            © {new Date().getFullYear()} 4ward
           </p>
-          <div className="mt-4 flex gap-3">
-            <a href="#" className="text-muted-foreground hover:text-foreground" aria-label="Social">
-              <Share2 className="h-4 w-4" />
-            </a>
-            <a href="#" className="text-muted-foreground hover:text-foreground" aria-label="Code">
-              <Code2 className="h-4 w-4" />
-            </a>
-            <a href="#" className="text-muted-foreground hover:text-foreground" aria-label="Links">
-              <Link2 className="h-4 w-4" />
-            </a>
+          <div className="flex gap-4 text-[12px] text-muted-foreground">
+            <Link href="/about#privacy" className="hover:text-foreground">
+              Privacy
+            </Link>
+            <Link href="/about#terms" className="hover:text-foreground">
+              Terms
+            </Link>
+            <Link href="/about#security" className="hover:text-foreground">
+              Security
+            </Link>
           </div>
         </div>
-
-        <div>
-          <h4 className="mb-3 text-sm font-semibold text-foreground">Marketplace</h4>
-          <ul className="space-y-2 text-sm text-muted-foreground">
-            <li><Link href="/marketplace" className="hover:text-primary">Browse Projects</Link></li>
-            <li><Link href="/marketplace?category=ARTIFICIAL_INTELLIGENCE" className="hover:text-primary">AI Projects</Link></li>
-            <li><Link href="/marketplace?category=WEB_APPLICATIONS" className="hover:text-primary">Web Apps</Link></li>
-            <li><Link href="/sell" className="hover:text-primary">Sell Your Project</Link></li>
-          </ul>
-        </div>
-
-        <div>
-          <h4 className="mb-3 text-sm font-semibold text-foreground">Creators</h4>
-          <ul className="space-y-2 text-sm text-muted-foreground">
-            <li><Link href="/dashboard" className="hover:text-primary">Dashboard</Link></li>
-            <li><Link href="/dashboard/analytics" className="hover:text-primary">Analytics</Link></li>
-            <li><Link href="/pricing" className="hover:text-primary">Pricing</Link></li>
-            <li><Link href="/affiliate" className="hover:text-primary">Affiliate Program</Link></li>
-          </ul>
-        </div>
-
-        <div>
-          <h4 className="mb-3 text-sm font-semibold text-foreground">Company</h4>
-          <ul className="space-y-2 text-sm text-muted-foreground">
-            <li><Link href="/about" className="hover:text-primary">About</Link></li>
-            <li><Link href="/about#security" className="hover:text-primary">Security</Link></li>
-            <li><Link href="/about#terms" className="hover:text-primary">Terms</Link></li>
-            <li><Link href="/about#privacy" className="hover:text-primary">Privacy</Link></li>
-          </ul>
-        </div>
-      </div>
-      <div className="border-t border-border py-6 text-center text-xs text-muted-foreground">
-        © {new Date().getFullYear()} 4ward. Built for student creators.
       </div>
     </footer>
   );
