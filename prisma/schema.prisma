@@ -1,0 +1,300 @@
+// 4ward Marketplace - Prisma Schema
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  BUYER
+  SELLER
+  ADMIN
+}
+
+enum ProjectStatus {
+  DRAFT
+  PENDING_REVIEW
+  APPROVED
+  PUBLISHED
+  REJECTED
+}
+
+enum ProjectCategory {
+  WEB_APPLICATIONS
+  MOBILE_APPLICATIONS
+  ARTIFICIAL_INTELLIGENCE
+  CYBERSECURITY
+  IOT
+  BLOCKCHAIN
+  DATA_SCIENCE
+  DATABASE_SYSTEMS
+  UI_UX_DESIGNS
+}
+
+enum LicenseType {
+  SOURCE_CODE
+  COMMERCIAL
+  EDUCATIONAL
+}
+
+enum PricingType {
+  FREE
+  PAID
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum BadgeType {
+  VERIFIED_CREATOR
+  TOP_SELLER
+  RISING_DEVELOPER
+}
+
+enum ReportStatus {
+  OPEN
+  REVIEWING
+  RESOLVED
+  DISMISSED
+}
+
+model User {
+  id            String   @id @default(cuid())
+  clerkId       String   @unique
+  name          String
+  email         String   @unique
+  username      String   @unique
+  avatar        String?
+  role          Role     @default(BUYER)
+  university    String?
+  bio           String?
+  skills        String[] @default([])
+  website       String?
+  githubUrl     String?
+  stripeAccount String?
+  isApproved    Boolean  @default(false)
+  affiliateCode String   @unique @default(cuid())
+  referredById  String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  projects      Project[]
+  purchases     Purchase[]
+  reviews       Review[]
+  transactions  Transaction[]
+  favorites     Favorite[]
+  notifications Notification[]
+  badges        UserBadge[]
+  sentMessages  Message[]      @relation("SentMessages")
+  receivedMessages Message[]   @relation("ReceivedMessages")
+  reports       Report[]
+  affiliateEarnings AffiliateEarning[]
+  auditLogs     AuditLog[]
+
+  @@index([role])
+  @@index([username])
+}
+
+model Project {
+  id               String          @id @default(cuid())
+  title            String
+  slug             String          @unique
+  description      String
+  shortDescription String?
+  category         ProjectCategory
+  price            Float           @default(0)
+  pricingType      PricingType     @default(PAID)
+  license          LicenseType     @default(SOURCE_CODE)
+  status           ProjectStatus   @default(DRAFT)
+  images           String[]        @default([])
+  coverImage       String?
+  demoUrl          String?
+  demoVideo        String?
+  sourceFile       String?
+  documentation    String?
+  githubRepo       String?
+  technologyStack  String[]        @default([])
+  views            Int             @default(0)
+  downloads        Int             @default(0)
+  sellerId         String
+  rejectionReason  String?
+  publishedAt      DateTime?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  seller      User       @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  purchases   Purchase[]
+  reviews     Review[]
+  favorites   Favorite[]
+  messages    Message[]
+  reports     Report[]
+
+  @@index([status])
+  @@index([category])
+  @@index([sellerId])
+  @@index([price])
+}
+
+model Purchase {
+  id            String        @id @default(cuid())
+  buyerId       String
+  projectId     String
+  amount        Float
+  paymentStatus PaymentStatus @default(PENDING)
+  stripeSession String?
+  downloadToken String        @unique @default(cuid())
+  affiliateCode String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  buyer   User    @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([buyerId, projectId])
+  @@index([buyerId])
+  @@index([projectId])
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  userId    String
+  projectId String
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, projectId])
+  @@index([projectId])
+}
+
+model Transaction {
+  id          String            @id @default(cuid())
+  sellerId    String
+  amount      Float
+  platformFee Float
+  netAmount   Float
+  status      TransactionStatus @default(PENDING)
+  purchaseId  String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  seller User @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+
+  @@index([sellerId])
+  @@index([status])
+}
+
+model Favorite {
+  userId    String
+  projectId String
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@id([userId, projectId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  message   String
+  link      String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
+}
+
+model UserBadge {
+  id        String    @id @default(cuid())
+  userId    String
+  badge     BadgeType
+  awardedAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, badge])
+}
+
+model Message {
+  id         String   @id @default(cuid())
+  senderId   String
+  receiverId String
+  projectId  String?
+  content    String
+  read       Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  sender   User     @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User     @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+  project  Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@index([senderId, receiverId])
+}
+
+model Report {
+  id          String       @id @default(cuid())
+  reporterId  String
+  projectId   String?
+  reason      String
+  description String?
+  status      ReportStatus @default(OPEN)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  reporter User     @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+  project  Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+}
+
+model AffiliateEarning {
+  id            String   @id @default(cuid())
+  userId        String
+  purchaseId    String
+  amount        Float
+  commissionPct Float    @default(10)
+  createdAt     DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String
+  entity    String?
+  entityId  String?
+  metadata  Json?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([action])
+}
