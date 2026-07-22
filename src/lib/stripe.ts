@@ -32,8 +32,8 @@ export async function createCheckoutSession(params: {
         quantity: 1,
         price_data: {
           currency: "tzs",
-          // TZS is a zero-decimal currency on Stripe
-          unit_amount: Math.round(params.amount),
+          // TZS is a two-decimal currency on Stripe (minor unit = senti)
+          unit_amount: Math.round(params.amount * 100),
           product_data: {
             name: params.projectTitle,
             description: "Digital project purchase on 4ward",
