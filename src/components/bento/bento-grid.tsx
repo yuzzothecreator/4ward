@@ -100,15 +100,23 @@ export function BentoGrid() {
             transition={cardTransition(reduceMotion)}
             className="font-display mt-3 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl"
           >
-            Everything between upload and payout
+            Make campus commerce self-driving
           </motion.h2>
           <motion.p
             variants={fadeUp}
             transition={cardTransition(reduceMotion)}
             className="mt-3 text-muted"
           >
-            A Linear-grade toolkit for student creators — automation, analytics,
-            trust, and discovery in one surface.
+            Automation, analytics, trust, and discovery — the same quiet craft as{" "}
+            <a
+              href="https://linear.app/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-foreground underline-offset-4 hover:underline"
+            >
+              Linear
+            </a>
+            , built for student creators.
           </motion.p>
         </motion.div>
 

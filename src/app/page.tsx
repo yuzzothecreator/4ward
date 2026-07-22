@@ -7,29 +7,29 @@ import { ArrowRight, ArrowUpRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProjectCard } from "@/components/projects/project-card";
 import { BentoGrid } from "@/components/bento";
-import { MeshGradient } from "@/components/ui/mesh-gradient";
-import { GradientText } from "@/components/ui/gradient-text";
+import { HeroProductMock } from "@/components/landing/hero-product-mock";
 import { demoProjects } from "@/lib/demo-data";
 import { CATEGORIES, STATS } from "@/lib/constants";
+import { easeOutExpo } from "@/lib/motion";
 
-const HERO_IMAGE =
-  "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=1800&q=80";
-
-const steps = [
+const pillars = [
   {
-    n: "01",
-    title: "Ship it after the defense",
-    copy: "Upload source, docs, demos, and screenshots the same week you present.",
+    fig: "1.0",
+    label: "Sell",
+    title: "List after you present",
+    copy: "Upload source, docs, and demos the same week you defend. We review once, then publish.",
   },
   {
-    n: "02",
-    title: "Get reviewed once",
-    copy: "We check quality and originality, then publish to the marketplace.",
+    fig: "2.0",
+    label: "Discover",
+    title: "Buy ready-made systems",
+    copy: "Browse campus projects by stack, university, and license — not vaporware decks.",
   },
   {
-    n: "03",
-    title: "Earn on every download",
-    copy: "Buyers pay. You keep the majority. Stripe today, African rails next.",
+    fig: "3.0",
+    label: "Earn",
+    title: "Get paid on every download",
+    copy: "Stripe today. African rails next. You keep the majority; we handle delivery.",
   },
 ];
 
@@ -38,97 +38,101 @@ export default function HomePage() {
   const spotlight = demoProjects[0];
 
   return (
-    <div className="overflow-x-hidden">
-      {/* ── Hero: one composition ── */}
-      <section className="relative min-h-[calc(100vh-4rem)] overflow-hidden grain">
-        <div className="absolute inset-0">
-          <Image
-            src={HERO_IMAGE}
-            alt="Students collaborating on software projects"
-            fill
-            priority
-            className="animate-drift object-cover"
-            sizes="100vw"
-          />
-          <div className="hero-wash absolute inset-0" />
-          <div className="absolute inset-0 bg-gradient-to-r from-primary/20 via-transparent to-accent/15 mix-blend-soft-light" />
+    <div className="overflow-x-hidden bg-background">
+      {/* ── Linear-style hero: copy + product ── */}
+      <section className="relative border-b border-border">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,hsla(217,91%,60%,0.12),transparent_55%)]" />
+
+        <div className="relative mx-auto max-w-4xl px-4 pb-12 pt-20 text-center sm:px-6 sm:pt-28">
+          <motion.p
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: easeOutExpo }}
+            className="text-sm text-muted"
+          >
+            The student product marketplace
+          </motion.p>
+          <motion.h1
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.05, ease: easeOutExpo }}
+            className="font-display mt-4 text-4xl font-semibold tracking-tight text-foreground sm:text-5xl md:text-[3.5rem] md:leading-[1.1]"
+          >
+            Turn finished campus projects
+            <br className="hidden sm:block" /> into products people buy
+          </motion.h1>
+          <motion.p
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1, ease: easeOutExpo }}
+            className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-muted sm:text-lg"
+          >
+            Purpose-built for students and developers. Sell source, docs, and demos
+            after presentation — with the craft of a modern product system.
+          </motion.p>
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.15, ease: easeOutExpo }}
+            className="mt-8 flex flex-wrap items-center justify-center gap-3"
+          >
+            <Link href="/marketplace">
+              <Button size="lg">
+                Explore Projects
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
+            <Link href="/sell">
+              <Button size="lg" variant="secondary">
+                Sell Your Project
+              </Button>
+            </Link>
+          </motion.div>
         </div>
 
-        <div className="relative mx-auto flex min-h-[calc(100vh-4rem)] max-w-7xl flex-col justify-end px-4 pb-16 pt-24 sm:px-6 sm:pb-20 lg:justify-center lg:pb-24">
-          <motion.div
-            initial={{ opacity: 0, y: 28 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-            className="max-w-2xl"
-          >
-            <p className="font-display text-5xl font-extrabold tracking-tight text-foreground sm:text-6xl md:text-7xl">
-              <GradientText animated>4ward</GradientText>
-            </p>
-            <h1 className="font-display mt-5 max-w-xl text-3xl font-semibold leading-[1.15] tracking-tight text-foreground sm:text-4xl md:text-5xl">
-              Turn finished campus projects into products people buy.
-            </h1>
-            <p className="mt-5 max-w-md text-base leading-relaxed text-muted sm:text-lg">
-              The marketplace for students and developers to sell source code,
-              documentation, and demos after presentation.
-            </p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <Link href="/marketplace">
-                <Button size="lg">
-                  Explore Projects
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-              </Link>
-              <Link href="/sell">
-                <Button size="lg" variant="secondary">
-                  Sell Your Project
-                </Button>
-              </Link>
-            </div>
-          </motion.div>
+        <div className="relative px-4 pb-20 sm:px-6">
+          <HeroProductMock />
         </div>
       </section>
 
-      {/* ── Proof line (not a stat strip) ── */}
-      <section className="border-y border-border bg-background">
-        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
-          <p className="max-w-3xl text-sm leading-relaxed text-muted sm:text-base">
-            <span className="font-medium text-foreground">{STATS.projects}</span> projects
-            from{" "}
-            <span className="font-medium text-foreground">{STATS.universities}</span>{" "}
-            universities — built by students, bought by builders who need a head start.
+      {/* ── Quiet proof ── */}
+      <section className="border-b border-border">
+        <div className="mx-auto flex max-w-5xl flex-col gap-2 px-4 py-10 text-center sm:px-6 sm:py-12">
+          <p className="text-sm text-muted">
+            <span className="text-foreground">{STATS.projects}</span> projects ·{" "}
+            <span className="text-foreground">{STATS.universities}</span> universities ·{" "}
+            <span className="text-foreground">{STATS.creators}</span> creators
           </p>
         </div>
       </section>
 
-      {/* ── How it works ── */}
-      <section className="relative overflow-hidden">
-        <MeshGradient animated className="opacity-90" />
-        <div className="relative mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-28">
-          <div className="max-w-xl">
-            <h2 className="font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-              From presentation to payout
-            </h2>
-            <p className="mt-3 text-muted">
-              Three steps. No monthly fee. You keep building; we handle discovery and delivery.
-            </p>
-          </div>
+      {/* ── Numbered pillars (Linear FIG style) ── */}
+      <section className="border-b border-border">
+        <div className="mx-auto max-w-5xl px-4 py-20 sm:px-6 sm:py-28">
+          <p className="text-sm text-muted">A new species of campus marketplace</p>
+          <h2 className="font-display mt-3 max-w-2xl text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+            Purpose-built for shipping student work into the real world.
+          </h2>
 
-          <div className="mt-12 grid gap-4 lg:grid-cols-3">
-            {steps.map((step, i) => (
+          <div className="mt-16 divide-y divide-border border-y border-border">
+            {pillars.map((p, i) => (
               <motion.div
-                key={step.n}
-                initial={{ opacity: 0, y: 20 }}
+                key={p.fig}
+                initial={{ opacity: 0, y: 16 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: "-40px" }}
-                transition={{ delay: i * 0.08, duration: 0.5 }}
-                className="rounded-[28px] bg-gradient-to-br from-primary/45 via-border to-accent/35 p-px shadow-xl"
+                transition={{ delay: i * 0.06, duration: 0.45, ease: easeOutExpo }}
+                className="grid gap-4 py-10 sm:grid-cols-[120px_1fr] sm:gap-10"
               >
-                <div className="glass h-full rounded-[27px] p-7">
-                  <span className="font-mono text-xs tracking-widest text-primary">{step.n}</span>
-                  <h3 className="font-display mt-4 text-xl font-semibold text-foreground">
-                    {step.title}
-                  </h3>
-                  <p className="mt-3 text-sm leading-relaxed text-muted">{step.copy}</p>
+                <div>
+                  <p className="font-mono text-xs text-muted-foreground">FIG {p.fig}</p>
+                  <p className="mt-1 text-sm font-medium text-primary">{p.label}</p>
+                </div>
+                <div>
+                  <h3 className="font-display text-xl font-semibold text-foreground">{p.title}</h3>
+                  <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted sm:text-base">
+                    {p.copy}
+                  </p>
                 </div>
               </motion.div>
             ))}
@@ -138,17 +142,17 @@ export default function HomePage() {
 
       <BentoGrid />
 
-      {/* ── Spotlight project (gradient glass) ── */}
-      <section className="bg-background">
-        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-24">
+      {/* ── Spotlight ── */}
+      <section className="border-b border-border bg-background">
+        <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-24">
+          <div className="mb-10 max-w-xl">
+            <p className="font-mono text-xs text-muted-foreground">4.0 Spotlight</p>
+            <h2 className="font-display mt-2 text-3xl font-semibold tracking-tight text-foreground">
+              Ready-made work, not slideware
+            </h2>
+          </div>
           <div className="grid items-stretch gap-6 lg:grid-cols-12">
-            <motion.div
-              initial={{ opacity: 0, x: -16 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.55 }}
-              className="relative min-h-[360px] overflow-hidden rounded-3xl lg:col-span-7"
-            >
+            <div className="relative min-h-[320px] overflow-hidden rounded-xl border border-border lg:col-span-7">
               <Image
                 src={spotlight.coverImage}
                 alt={spotlight.title}
@@ -156,34 +160,21 @@ export default function HomePage() {
                 className="object-cover"
                 sizes="(max-width:1024px) 100vw, 58vw"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent" />
               <div className="absolute inset-x-0 bottom-0 p-6 sm:p-8">
-                <p className="text-xs uppercase tracking-[0.2em] text-white/70">
-                  Spotlight
-                </p>
-                <h3 className="font-display mt-2 max-w-lg text-2xl font-semibold text-white sm:text-3xl">
+                <h3 className="font-display max-w-lg text-2xl font-semibold text-white">
                   {spotlight.title}
                 </h3>
-                <p className="mt-2 max-w-md text-sm text-white/75">
+                <p className="mt-2 text-sm text-white/70">
                   {spotlight.seller.name} · {spotlight.seller.university}
                 </p>
               </div>
-            </motion.div>
+            </div>
 
-            <motion.div
-              initial={{ opacity: 0, x: 16 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.55, delay: 0.1 }}
-              className="glass-gradient flex flex-col justify-between rounded-3xl p-7 sm:p-8 lg:col-span-5"
-            >
+            <div className="flex flex-col justify-between rounded-xl border border-border bg-card p-7 sm:p-8 lg:col-span-5">
               <div>
-                <h2 className="font-display text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-                  Ready-made work, not slideware
-                </h2>
-                <p className="mt-4 text-sm leading-relaxed text-muted sm:text-base">
-                  {spotlight.shortDescription} Buyers get source, docs, and a clear license —
-                  so your thesis project keeps earning after the grade is posted.
+                <p className="text-sm leading-relaxed text-muted">
+                  {spotlight.shortDescription} Buyers get source, docs, and a clear license.
                 </p>
                 <ul className="mt-6 space-y-2 text-sm text-muted">
                   {spotlight.technologyStack.slice(0, 4).map((t) => (
@@ -195,57 +186,54 @@ export default function HomePage() {
                 </ul>
               </div>
               <Link href={`/projects/${spotlight.slug}`} className="mt-8 inline-flex">
-                <Button className="w-full sm:w-auto">
+                <Button>
                   View project
                   <ArrowUpRight className="h-4 w-4" />
                 </Button>
               </Link>
-            </motion.div>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* ── Categories as editorial list ── */}
-      <section className="border-y border-border bg-foreground/[0.02]">
+      {/* ── Categories ── */}
+      <section className="border-b border-border">
         <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-20">
-          <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
-            <div className="max-w-md">
-              <h2 className="font-display text-3xl font-semibold tracking-tight text-foreground">
+          <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="font-mono text-xs text-muted-foreground">5.0 Browse</p>
+              <h2 className="font-display mt-2 text-3xl font-semibold tracking-tight text-foreground">
                 Shop by craft
               </h2>
-              <p className="mt-3 text-muted">
-                Web, mobile, AI, security, IoT — find a stack that already matches your brief.
-              </p>
             </div>
-            <Link href="/marketplace" className="text-sm font-medium text-primary hover:underline">
-              Open full marketplace →
+            <Link href="/marketplace" className="text-sm text-muted transition hover:text-foreground">
+              Open marketplace →
             </Link>
           </div>
-
-          <div className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-10 grid gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
             {CATEGORIES.map((cat) => (
               <Link
                 key={cat.value}
                 href={`/marketplace?category=${cat.value}`}
-                className="glass group flex items-center justify-between rounded-2xl px-5 py-4 transition hover:border-primary/35"
+                className="group flex items-center justify-between bg-card px-5 py-4 transition hover:bg-foreground/[0.03]"
               >
-                <span className="text-sm font-medium text-foreground">{cat.label}</span>
-                <ArrowUpRight className="h-4 w-4 text-muted transition group-hover:text-primary" />
+                <span className="text-sm text-foreground">{cat.label}</span>
+                <ArrowUpRight className="h-4 w-4 text-muted opacity-0 transition group-hover:opacity-100" />
               </Link>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── Featured listings ── */}
-      <section className="gradient-mesh">
+      {/* ── Featured ── */}
+      <section className="border-b border-border">
         <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-24">
           <div className="mb-10 flex items-end justify-between gap-4">
             <div>
-              <h2 className="font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+              <p className="font-mono text-xs text-muted-foreground">6.0 Catalog</p>
+              <h2 className="font-display mt-2 text-3xl font-semibold tracking-tight text-foreground">
                 Fresh on the shelf
               </h2>
-              <p className="mt-2 text-muted">Recent student-built products worth opening.</p>
             </div>
             <Link href="/marketplace">
               <Button variant="outline">Browse all</Button>
@@ -259,39 +247,36 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── Closing CTA ── */}
-      <section className="px-4 pb-20 pt-4 sm:px-6 sm:pb-28">
-        <div className="relative mx-auto max-w-5xl overflow-hidden rounded-[2rem]">
-          <div className="absolute inset-0 animate-gradient-x bg-gradient-to-br from-primary via-sky-500 to-accent bg-[length:200%_200%] opacity-95 will-change-[background-position]" />
-          <div className="absolute -right-16 -top-16 h-64 w-64 rounded-full bg-white/20 blur-3xl" />
-          <div className="absolute -bottom-20 -left-10 h-56 w-56 rounded-full bg-cyan-300/30 blur-3xl" />
+      {/* ── Quote ── */}
+      <section className="border-b border-border">
+        <div className="mx-auto max-w-3xl px-4 py-20 text-center sm:px-6 sm:py-24">
+          <blockquote className="font-display text-2xl font-medium leading-snug tracking-tight text-foreground sm:text-3xl">
+            “You’ll probably build a better product — just because your campus work finally has a real shelf.”
+          </blockquote>
+          <p className="mt-6 text-sm text-muted">Built for student creators on 4ward</p>
+        </div>
+      </section>
 
-          <div className="glass relative rounded-[2rem] border-white/20 bg-white/10 p-10 text-center sm:p-14">
-            <h2 className="font-display text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-              Your next project can pay for next semester
-            </h2>
-            <p className="mx-auto mt-4 max-w-lg text-sm leading-relaxed text-white/80 sm:text-base">
-              List after you present. Keep ownership. Get paid when someone downloads your work.
-            </p>
-            <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-              <Link href="/sell">
-                <Button
-                  size="lg"
-                  className="bg-white text-slate-900 hover:bg-white/90 hover:text-slate-900"
-                >
-                  Start selling
-                </Button>
-              </Link>
-              <Link href="/marketplace">
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="border-white/40 text-white hover:bg-white/10 hover:text-white"
-                >
-                  Explore projects
-                </Button>
-              </Link>
-            </div>
+      {/* ── Quiet CTA (Linear “Built for the future”) ── */}
+      <section className="px-4 py-20 sm:px-6 sm:py-28">
+        <div className="mx-auto max-w-2xl text-center">
+          <h2 className="font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+            Built for campus builders.
+            <br />
+            Available today.
+          </h2>
+          <p className="mx-auto mt-4 max-w-md text-muted">
+            List after you present. Keep ownership. Get paid when someone downloads your work.
+          </p>
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+            <Link href="/sell">
+              <Button size="lg">Start selling</Button>
+            </Link>
+            <Link href="/marketplace">
+              <Button size="lg" variant="secondary">
+                Explore projects
+              </Button>
+            </Link>
           </div>
         </div>
       </section>
