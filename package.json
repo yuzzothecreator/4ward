@@ -10,7 +10,9 @@
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "tsx prisma/seed.ts",
+    "db:apply": "node scripts/apply-schema.js",
+    "health": "node scripts/health-check.js"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.5.22",

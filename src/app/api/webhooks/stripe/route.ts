@@ -21,7 +21,8 @@ export async function POST(req: Request) {
 
     if (event.type === "checkout.session.completed") {
       const session = event.data.object;
-      const amount = (session.amount_total || 0) / 100;
+      // TZS is zero-decimal — amount_total is already in whole shillings
+      const amount = session.amount_total || 0;
       const fees = calculateFees(amount);
 
       console.info("[audit] payment.verified", {

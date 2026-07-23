@@ -1,20 +1,38 @@
 import { NextResponse } from "next/server";
 import { getSignedDownloadUrl } from "@/lib/storage";
 import { demoProjects } from "@/lib/demo-data";
+import { getPrisma, pingDatabase } from "@/lib/prisma";
 
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const project = demoProjects.find((p) => p.id === id);
+  const token = `dl_${id}_${Date.now()}`;
 
-  if (!project) {
+  const demo = demoProjects.find((p) => p.id === id);
+  let found = Boolean(demo);
+
+  if (!found) {
+    const db = await pingDatabase();
+    if (db.ok) {
+      try {
+        const prisma = await getPrisma();
+        const project = await prisma.project.findUnique({ where: { id } });
+        found = Boolean(project);
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+
+  // Allow user-store ids (user_*) in demo without DB row
+  if (!found && id.startsWith("user_")) found = true;
+
+  if (!found) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  // In production: verify purchase ownership + generate signed URL
-  const token = `dl_${id}_${Date.now()}`;
   try {
     const signed = await getSignedDownloadUrl(`projects/${id}/source.zip`);
     return NextResponse.json({
@@ -22,6 +40,7 @@ export async function GET(
       token,
       expiresIn: signed.expiresIn,
       protected: true,
+      demo: signed.url === "#",
     });
   } catch {
     return NextResponse.json({ token, protected: true, demo: true });
