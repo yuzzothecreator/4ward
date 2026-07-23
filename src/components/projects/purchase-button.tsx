@@ -2,17 +2,33 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ShoppingCart, Heart, Loader2 } from "lucide-react";
+import { ShoppingCart, Heart, Loader2, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/store/use-app-store";
 import type { DemoProject } from "@/lib/demo-data";
+import Link from "next/link";
 
 export function PurchaseButton({ project }: { project: DemoProject }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const { toggleFavorite, isFavorite, addToCart } = useAppStore();
+  const user = useAppStore((s) => s.user);
+  const toggleFavorite = useAppStore((s) => s.toggleFavorite);
+  const isFavorite = useAppStore((s) => s.isFavorite);
+  const addToCart = useAppStore((s) => s.addToCart);
+  const hasPurchased = useAppStore((s) => s.hasPurchased);
+  const owned = hasPurchased(project.id);
+  const isOwner =
+    !!user &&
+    (project.seller.username === user.username || project.seller.id === user.email);
 
   async function handlePurchase() {
+    if (!user && !process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) {
+      router.push(`/sign-up?next=${encodeURIComponent(`/checkout?project=${project.slug}`)}`);
+      return;
+    }
+
+    if (isOwner) return;
+
     setLoading(true);
     addToCart({
       projectId: project.id,
@@ -25,19 +41,38 @@ export function PurchaseButton({ project }: { project: DemoProject }) {
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectId: project.id }),
+        body: JSON.stringify({ projectId: project.id, slug: project.slug }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (data.url) {
         window.location.href = data.url;
-      } else {
-        router.push(`/checkout?project=${project.slug}&demo=1`);
+        return;
       }
+      router.push(`/checkout?project=${project.slug}&demo=1`);
     } catch {
       router.push(`/checkout?project=${project.slug}&demo=1`);
     } finally {
       setLoading(false);
     }
+  }
+
+  if (owned) {
+    return (
+      <Link href="/dashboard/purchases">
+        <Button className="w-full" variant="secondary">
+          <CheckCircle2 className="h-4 w-4" />
+          Purchased — download
+        </Button>
+      </Link>
+    );
+  }
+
+  if (isOwner) {
+    return (
+      <Button className="w-full" variant="secondary" disabled>
+        Your listing
+      </Button>
+    );
   }
 
   return (
@@ -57,7 +92,7 @@ export function PurchaseButton({ project }: { project: DemoProject }) {
         aria-label="Favorite"
       >
         <Heart
-          className={`h-4 w-4 ${isFavorite(project.id) ? "fill-pink-500 text-pink-500" : ""}`}
+          className={`h-4 w-4 ${isFavorite(project.id) ? "fill-foreground text-foreground" : ""}`}
         />
       </Button>
     </div>

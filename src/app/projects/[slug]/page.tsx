@@ -1,42 +1,49 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { useParams } from "next/navigation";
+import { useMemo } from "react";
 import { Star, ExternalLink, Code2, Download, GraduationCap, Shield } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { getProjectBySlug, demoProjects } from "@/lib/demo-data";
 import { formatPrice, categoryLabel, formatNumber } from "@/lib/utils";
 import { ProjectCard } from "@/components/projects/project-card";
 import { PurchaseButton } from "@/components/projects/purchase-button";
 import { ProjectReviews } from "@/components/projects/project-reviews";
+import { useAppStore } from "@/store/use-app-store";
 
-export function generateStaticParams() {
-  return demoProjects.map((p) => ({ slug: p.slug }));
-}
+export default function ProjectDetailPage() {
+  const params = useParams<{ slug: string }>();
+  const slug = params.slug;
+  const listings = useAppStore((s) => s.listings);
+  const getCatalog = useAppStore((s) => s.getCatalog);
+  const getProjectBySlug = useAppStore((s) => s.getProjectBySlug);
 
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
-  const project = getProjectBySlug(slug);
-  if (!project) return { title: "Project not found" };
-  return { title: project.title, description: project.shortDescription };
-}
+  const project = useMemo(() => getProjectBySlug(slug), [slug, listings, getProjectBySlug]);
 
-export default async function ProjectDetailPage({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
-  const { slug } = await params;
-  const project = getProjectBySlug(slug);
-  if (!project) notFound();
+  const related = useMemo(() => {
+    if (!project) return [];
+    return getCatalog()
+      .filter((p) => p.category === project.category && p.id !== project.id)
+      .slice(0, 3);
+  }, [project, listings, getCatalog]);
 
-  const related = demoProjects
-    .filter((p) => p.category === project.category && p.id !== project.id)
-    .slice(0, 3);
+  if (!project) {
+    return (
+      <div className="mx-auto max-w-lg px-4 py-20 text-center">
+        <h1 className="text-xl font-semibold text-foreground">Project not found</h1>
+        <p className="mt-2 text-sm text-muted">It may have been removed or the link is wrong.</p>
+        <Link href="/marketplace" className="mt-6 inline-block">
+          <Button>Browse marketplace</Button>
+        </Link>
+      </div>
+    );
+  }
 
   return (
-    <div className="gradient-mesh min-h-screen">
+    <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
         <div className="grid gap-10 lg:grid-cols-3">
           <div className="space-y-6 lg:col-span-2">

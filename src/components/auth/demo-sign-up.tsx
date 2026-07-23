@@ -2,43 +2,20 @@
 
 import Link from "next/link";
 import { FormEvent, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useAppStore } from "@/store/use-app-store";
 
-const DEMO_USER_KEY = "4ward_demo_user";
-
-export type DemoUser = {
-  name: string;
-  email: string;
-  createdAt: string;
-};
-
-export function getDemoUser(): DemoUser | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = localStorage.getItem(DEMO_USER_KEY);
-    return raw ? (JSON.parse(raw) as DemoUser) : null;
-  } catch {
-    return null;
-  }
-}
-
-export function setDemoUser(user: DemoUser) {
-  localStorage.setItem(DEMO_USER_KEY, JSON.stringify(user));
-}
-
-export function clearDemoUser() {
-  localStorage.removeItem(DEMO_USER_KEY);
-}
-
-/** Local registration when Clerk keys are not configured */
-export function DemoSignUp({ redirectTo = "/sell" }: { redirectTo?: string }) {
+export function DemoSignUp() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const signUp = useAppStore((s) => s.signUp);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [university, setUniversity] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -53,12 +30,9 @@ export function DemoSignUp({ redirectTo = "/sell" }: { redirectTo?: string }) {
     }
 
     setLoading(true);
-    setDemoUser({
-      name: name.trim(),
-      email: email.trim().toLowerCase(),
-      createdAt: new Date().toISOString(),
-    });
-    router.push(redirectTo);
+    signUp({ name, email, university: university || undefined });
+    const next = searchParams.get("next") || "/sell";
+    router.push(next);
   }
 
   return (
@@ -66,7 +40,7 @@ export function DemoSignUp({ redirectTo = "/sell" }: { redirectTo?: string }) {
       <CardHeader className="text-center">
         <CardTitle>Create your 4ward account</CardTitle>
         <CardDescription>
-          Register as a student creator. After signup you can list a project.
+          Register, then list a project and sell it on the marketplace.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -97,6 +71,16 @@ export function DemoSignUp({ redirectTo = "/sell" }: { redirectTo?: string }) {
             />
           </div>
           <div>
+            <Label htmlFor="university">University (optional)</Label>
+            <Input
+              id="university"
+              className="mt-1.5"
+              placeholder="University of Dar es Salaam"
+              value={university}
+              onChange={(e) => setUniversity(e.target.value)}
+            />
+          </div>
+          <div>
             <Label htmlFor="password">Password</Label>
             <Input
               id="password"
@@ -122,9 +106,6 @@ export function DemoSignUp({ redirectTo = "/sell" }: { redirectTo?: string }) {
             <Link href="/sign-in" className="text-foreground underline-offset-4 hover:underline">
               Sign in
             </Link>
-          </p>
-          <p className="text-center text-[11px] text-muted-foreground">
-            Demo auth (no Clerk keys). Add Clerk env vars for production OAuth.
           </p>
         </form>
       </CardContent>

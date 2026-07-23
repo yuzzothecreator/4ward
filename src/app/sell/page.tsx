@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Sparkles, Upload, Loader2 } from "lucide-react";
@@ -12,12 +13,15 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { projectSchema, type ProjectFormValues } from "@/lib/validations";
 import { CATEGORIES, TECHNOLOGIES, LICENSE_TYPES } from "@/lib/constants";
+import { useAppStore } from "@/store/use-app-store";
+import { RequireAuth } from "@/components/auth/require-auth";
+import type { DemoProject } from "@/lib/demo-data";
 
-export default function SellPage() {
+function SellForm() {
+  const addListing = useAppStore((s) => s.addListing);
   const [selectedTech, setSelectedTech] = useState<string[]>([]);
   const [generating, setGenerating] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  const [status, setStatus] = useState<"DRAFT" | "PENDING_REVIEW">("DRAFT");
+  const [published, setPublished] = useState<DemoProject | null>(null);
 
   const {
     register,
@@ -68,36 +72,54 @@ export default function SellPage() {
   }
 
   async function onSubmit(values: ProjectFormValues, asDraft: boolean) {
-    setStatus(asDraft ? "DRAFT" : "PENDING_REVIEW");
+    const project = addListing(values, {
+      status: asDraft ? "DRAFT" : "PUBLISHED",
+    });
+
+    // Keep API in sync for server demos
     await fetch("/api/projects", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...values, status: asDraft ? "DRAFT" : "PENDING_REVIEW" }),
-    });
-    setSubmitted(true);
+      body: JSON.stringify({
+        ...values,
+        status: asDraft ? "DRAFT" : "PUBLISHED",
+      }),
+    }).catch(() => null);
+
+    setPublished(project);
   }
 
-  if (submitted) {
+  if (published) {
     return (
-      <div className="gradient-mesh flex min-h-[70vh] items-center justify-center px-4">
+      <div className="flex min-h-[70vh] items-center justify-center px-4">
         <Card className="max-w-md text-center">
           <CardHeader>
-            <CardTitle>Project submitted!</CardTitle>
+            <CardTitle>
+              {published.status === "DRAFT" ? "Draft saved" : "Project listed!"}
+            </CardTitle>
             <CardDescription>
-              Status: <Badge variant="warning">{status.replace("_", " ")}</Badge>
-              <br />
-              {status === "PENDING_REVIEW"
-                ? "Our team will review your project before publishing."
-                : "Saved as draft. You can submit for review anytime."}
+              <Badge variant={published.status === "DRAFT" ? "warning" : "success"} className="mt-2">
+                {published.status}
+              </Badge>
+              <span className="mt-3 block">
+                {published.status === "DRAFT"
+                  ? "Saved as draft. Publish when you are ready."
+                  : "Your project is live on the marketplace and ready to buy."}
+              </span>
             </CardDescription>
           </CardHeader>
-          <CardContent className="flex justify-center gap-3">
-            <Button onClick={() => (window.location.href = "/dashboard/projects")}>
-              Go to projects
-            </Button>
-            <Button variant="secondary" onClick={() => setSubmitted(false)}>
-              List another
-            </Button>
+          <CardContent className="flex flex-col justify-center gap-3 sm:flex-row">
+            {published.status === "PUBLISHED" && (
+              <Link href={`/projects/${published.slug}`}>
+                <Button>View listing</Button>
+              </Link>
+            )}
+            <Link href="/marketplace">
+              <Button variant="secondary">Marketplace</Button>
+            </Link>
+            <Link href="/dashboard/projects">
+              <Button variant="outline">My projects</Button>
+            </Link>
           </CardContent>
         </Card>
       </div>
@@ -105,11 +127,11 @@ export default function SellPage() {
   }
 
   return (
-    <div className="gradient-mesh min-h-screen">
+    <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
         <h1 className="text-3xl font-bold text-foreground">Sell your project</h1>
         <p className="mt-2 text-muted">
-          Upload source code, docs, and demos. Monetize after your presentation.
+          Upload source code, docs, and demos. Publish to the marketplace and get paid in TZS.
         </p>
 
         <form className="mt-8 space-y-6">
@@ -120,20 +142,43 @@ export default function SellPage() {
             <CardContent className="space-y-4">
               <div>
                 <Label htmlFor="title">Title</Label>
-                <Input id="title" className="mt-1.5" placeholder="CampusConnect Social Network" {...register("title")} />
-                {errors.title && <p className="mt-1 text-xs text-red-400">{errors.title.message}</p>}
+                <Input
+                  id="title"
+                  className="mt-1.5"
+                  placeholder="CampusConnect Social Network"
+                  {...register("title")}
+                />
+                {errors.title && (
+                  <p className="mt-1 text-xs text-red-400">{errors.title.message}</p>
+                )}
               </div>
 
               <div>
                 <div className="mb-1.5 flex items-center justify-between">
                   <Label htmlFor="description">Description</Label>
-                  <Button type="button" variant="ghost" size="sm" onClick={generateDescription} disabled={generating || !title}>
-                    {generating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={generateDescription}
+                    disabled={generating || !title}
+                  >
+                    {generating ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Sparkles className="h-3.5 w-3.5" />
+                    )}
                     AI generate
                   </Button>
                 </div>
-                <Textarea id="description" placeholder="Describe features, architecture, and what buyers get..." {...register("description")} />
-                {errors.description && <p className="mt-1 text-xs text-red-400">{errors.description.message}</p>}
+                <Textarea
+                  id="description"
+                  placeholder="Describe features, architecture, and what buyers get..."
+                  {...register("description")}
+                />
+                {errors.description && (
+                  <p className="mt-1 text-xs text-red-400">{errors.description.message}</p>
+                )}
               </div>
 
               <div>
@@ -187,17 +232,19 @@ export default function SellPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-3 sm:grid-cols-2">
-                {["Screenshots", "Demo video", "Documentation PDF", "Source code ZIP"].map((label) => (
-                  <label
-                    key={label}
-                    className="flex cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-border bg-foreground/[0.03] p-6 text-center transition hover:border-primary/40"
-                  >
-                    <Upload className="mb-2 h-5 w-5 text-primary" />
-                    <span className="text-sm text-foreground/80">{label}</span>
-                    <span className="mt-1 text-xs text-muted-foreground">Click to upload</span>
-                    <input type="file" className="hidden" />
-                  </label>
-                ))}
+                {["Screenshots", "Demo video", "Documentation PDF", "Source code ZIP"].map(
+                  (label) => (
+                    <label
+                      key={label}
+                      className="flex cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-border bg-foreground/[0.03] p-6 text-center transition hover:border-primary/40"
+                    >
+                      <Upload className="mb-2 h-5 w-5 text-primary" />
+                      <span className="text-sm text-foreground/80">{label}</span>
+                      <span className="mt-1 text-xs text-muted-foreground">Click to upload</span>
+                      <input type="file" className="hidden" />
+                    </label>
+                  )
+                )}
               </div>
               <div>
                 <Label>Demo URL</Label>
@@ -205,7 +252,11 @@ export default function SellPage() {
               </div>
               <div>
                 <Label>GitHub repository (optional)</Label>
-                <Input className="mt-1.5" placeholder="https://github.com/..." {...register("githubRepo")} />
+                <Input
+                  className="mt-1.5"
+                  placeholder="https://github.com/..."
+                  {...register("githubRepo")}
+                />
               </div>
             </CardContent>
           </Card>
@@ -275,11 +326,19 @@ export default function SellPage() {
               onClick={handleSubmit((v) => onSubmit(v, false))}
             >
               {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              Submit for review
+              Publish to marketplace
             </Button>
           </div>
         </form>
       </div>
     </div>
+  );
+}
+
+export default function SellPage() {
+  return (
+    <RequireAuth redirectTo="/sign-up">
+      <SellForm />
+    </RequireAuth>
   );
 }

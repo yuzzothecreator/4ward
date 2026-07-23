@@ -1,20 +1,25 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { Suspense, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import { CheckCircle2, CreditCard, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { getProjectBySlug } from "@/lib/demo-data";
 import { formatPrice } from "@/lib/utils";
+import { useAppStore } from "@/store/use-app-store";
+import { RequireAuth } from "@/components/auth/require-auth";
 import Link from "next/link";
 
 function CheckoutInner() {
   const params = useSearchParams();
   const slug = params.get("project") || "";
   const demo = params.get("demo") === "1";
-  const project = getProjectBySlug(slug);
+  const listings = useAppStore((s) => s.listings);
+  const getProjectBySlug = useAppStore((s) => s.getProjectBySlug);
+  const addPurchase = useAppStore((s) => s.addPurchase);
+  const hasPurchased = useAppStore((s) => s.hasPurchased);
+  const project = useMemo(() => getProjectBySlug(slug), [slug, listings, getProjectBySlug]);
   const [done, setDone] = useState(false);
   const [method, setMethod] = useState<"stripe" | "mpesa" | "azampay" | "selcom">("stripe");
 
@@ -29,34 +34,44 @@ function CheckoutInner() {
     );
   }
 
-  if (done) {
+  const alreadyOwned = hasPurchased(project.id);
+
+  function completePurchase() {
+    addPurchase(project!);
+    setDone(true);
+  }
+
+  if (done || alreadyOwned) {
     return (
       <div className="mx-auto flex max-w-md flex-col items-center px-4 py-20 text-center">
-        <CheckCircle2 className="mb-4 h-16 w-16 text-success" />
+        <CheckCircle2 className="mb-4 h-16 w-16 text-emerald-500" />
         <h1 className="text-2xl font-bold text-foreground">Purchase complete</h1>
         <p className="mt-2 text-muted">
           {project.title} is ready to download from your dashboard.
         </p>
-        <Link href="/dashboard/purchases" className="mt-6">
-          <Button>Go to purchases</Button>
-        </Link>
+        <div className="mt-6 flex gap-3">
+          <Link href="/dashboard/purchases">
+            <Button>Go to purchases</Button>
+          </Link>
+          <Link href={`/projects/${project.slug}`}>
+            <Button variant="secondary">View project</Button>
+          </Link>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="gradient-mesh mx-auto max-w-lg px-4 py-12">
+    <div className="mx-auto max-w-lg px-4 py-12">
       <Card>
         <CardHeader>
           <CardTitle>Checkout</CardTitle>
           {demo && (
             <Badge variant="warning" className="w-fit">
-              Demo mode
+              Demo checkout
             </Badge>
           )}
-          <p className="text-sm text-muted">
-            Complete your purchase of {project.title}
-          </p>
+          <p className="text-sm text-muted">Complete your purchase of {project.title}</p>
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="flex justify-between text-sm">
@@ -70,7 +85,7 @@ function CheckoutInner() {
             </p>
             {(
               [
-                { id: "stripe" as const, label: "Stripe (Card)", icon: CreditCard, ready: true },
+                { id: "stripe" as const, label: "Card / Stripe", icon: CreditCard, ready: true },
                 { id: "mpesa" as const, label: "M-Pesa", icon: Smartphone, ready: false },
                 { id: "azampay" as const, label: "AzamPay", icon: Smartphone, ready: false },
                 { id: "selcom" as const, label: "Selcom", icon: Smartphone, ready: false },
@@ -94,9 +109,12 @@ function CheckoutInner() {
             ))}
           </div>
 
-          <Button className="w-full" onClick={() => setDone(true)}>
+          <Button className="w-full" onClick={completePurchase}>
             {project.price === 0 ? "Get free access" : `Pay ${formatPrice(project.price)}`}
           </Button>
+          <p className="text-center text-[11px] text-muted-foreground">
+            Demo mode records the purchase locally so you can download from Purchases.
+          </p>
         </CardContent>
       </Card>
     </div>
@@ -105,8 +123,10 @@ function CheckoutInner() {
 
 export default function CheckoutPage() {
   return (
-    <Suspense fallback={<div className="p-20 text-center text-muted">Loading checkout...</div>}>
-      <CheckoutInner />
-    </Suspense>
+    <RequireAuth redirectTo="/sign-up">
+      <Suspense fallback={<div className="p-20 text-center text-muted">Loading checkout...</div>}>
+        <CheckoutInner />
+      </Suspense>
+    </RequireAuth>
   );
 }

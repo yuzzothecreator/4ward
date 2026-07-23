@@ -1,17 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useState } from "react";
-import { useRouter } from "next/navigation";
+import { FormEvent, useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { getDemoUser, setDemoUser } from "@/components/auth/demo-sign-up";
+import { useAppStore } from "@/store/use-app-store";
 
-/** Local sign-in when Clerk keys are not configured */
-export function DemoSignIn({ redirectTo = "/dashboard" }: { redirectTo?: string }) {
+function DemoSignInForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const signIn = useAppStore((s) => s.signIn);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -27,15 +28,9 @@ export function DemoSignIn({ redirectTo = "/dashboard" }: { redirectTo?: string 
     }
 
     setLoading(true);
-    const existing = getDemoUser();
-    const name = existing?.email === email.trim().toLowerCase() ? existing.name : email.split("@")[0];
-
-    setDemoUser({
-      name,
-      email: email.trim().toLowerCase(),
-      createdAt: existing?.createdAt ?? new Date().toISOString(),
-    });
-    router.push(redirectTo);
+    signIn({ email });
+    const next = searchParams.get("next") || "/dashboard";
+    router.push(next);
   }
 
   return (
@@ -89,5 +84,13 @@ export function DemoSignIn({ redirectTo = "/dashboard" }: { redirectTo?: string 
         </form>
       </CardContent>
     </Card>
+  );
+}
+
+export function DemoSignIn() {
+  return (
+    <Suspense fallback={<div className="text-sm text-muted">Loading…</div>}>
+      <DemoSignInForm />
+    </Suspense>
   );
 }

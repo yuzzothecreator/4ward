@@ -1,13 +1,21 @@
 "use client";
 
-import { demoProjects } from "@/lib/demo-data";
+import { useMemo } from "react";
 import { ProjectCard } from "@/components/projects/project-card";
 import { useAppStore } from "@/store/use-app-store";
 import { Card, CardContent } from "@/components/ui/card";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 export default function WishlistPage() {
   const favorites = useAppStore((s) => s.favorites);
-  const projects = demoProjects.filter((p) => favorites.includes(p.id));
+  const listings = useAppStore((s) => s.listings);
+  const getCatalog = useAppStore((s) => s.getCatalog);
+
+  const projects = useMemo(
+    () => getCatalog().filter((p) => favorites.includes(p.id)),
+    [favorites, listings, getCatalog]
+  );
 
   return (
     <div className="space-y-6">
@@ -17,8 +25,11 @@ export default function WishlistPage() {
       </div>
       {projects.length === 0 ? (
         <Card>
-          <CardContent className="p-10 text-center text-muted-foreground">
-            No favorites yet. Heart projects in the marketplace.
+          <CardContent className="space-y-3 p-10 text-center">
+            <p className="text-muted-foreground">No favorites yet.</p>
+            <Link href="/marketplace">
+              <Button variant="secondary">Browse marketplace</Button>
+            </Link>
           </CardContent>
         </Card>
       ) : (

@@ -5,17 +5,26 @@ import { createCheckoutSession } from "@/lib/stripe";
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { projectId, affiliateCode } = body;
+    const { projectId, slug, affiliateCode } = body;
 
-    const project = demoProjects.find((p) => p.id === projectId);
+    const project =
+      demoProjects.find((p) => p.id === projectId) ||
+      demoProjects.find((p) => p.slug === slug);
+
+    // User-listed projects live in the client store — always allow demo checkout
     if (!project) {
-      return NextResponse.json({ error: "Project not found" }, { status: 404 });
+      return NextResponse.json({
+        url: null,
+        demo: true,
+        message: "Use demo checkout for this listing",
+      });
     }
 
     if (project.price === 0) {
       return NextResponse.json({
         url: null,
         free: true,
+        demo: true,
         message: "Free project — claim from checkout",
       });
     }
@@ -42,9 +51,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ url: session.url });
   } catch (error) {
     console.error(error);
-    return NextResponse.json(
-      { error: "Checkout failed", demo: true },
-      { status: 500 }
-    );
+    return NextResponse.json({
+      url: null,
+      demo: true,
+      error: "Checkout failed — use demo checkout",
+    });
   }
 }

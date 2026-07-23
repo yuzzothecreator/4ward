@@ -7,11 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ProjectCard } from "@/components/projects/project-card";
-import { filterProjects } from "@/lib/demo-data";
+import { filterCatalog, useAppStore } from "@/store/use-app-store";
 import { CATEGORIES, TECHNOLOGIES } from "@/lib/constants";
 
 export default function MarketplacePage() {
   const searchParams = useSearchParams();
+  const listings = useAppStore((s) => s.listings);
+  const getCatalog = useAppStore((s) => s.getCatalog);
   const [q, setQ] = useState(searchParams.get("q") || "");
   const [category, setCategory] = useState(searchParams.get("category") || "");
   const [tech, setTech] = useState("");
@@ -34,7 +36,7 @@ export default function MarketplacePage() {
       minPrice = 100001;
     }
 
-    return filterProjects({
+    return filterCatalog(getCatalog(), {
       q: q || undefined,
       category: category || undefined,
       tech: tech || undefined,
@@ -43,7 +45,7 @@ export default function MarketplacePage() {
       maxPrice,
       minRating: minRating || undefined,
     });
-  }, [q, category, tech, university, minRating, priceRange]);
+  }, [q, category, tech, university, minRating, priceRange, listings, getCatalog]);
 
   const universities = [
     "University of Nairobi",

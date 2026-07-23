@@ -8,7 +8,7 @@ const clerkEnabled = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
 export default function SignInPage() {
   return (
     <div className="flex min-h-[70vh] items-center justify-center px-4 py-16">
-      {clerkEnabled ? <ClerkSignIn /> : <DemoSignIn redirectTo="/dashboard" />}
+      {clerkEnabled ? <ClerkSignIn /> : <DemoSignIn />}
     </div>
   );
 }
