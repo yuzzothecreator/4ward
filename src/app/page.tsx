@@ -90,7 +90,7 @@ export default function HomePage() {
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
-            <Link href="/sell">
+            <Link href="/sign-up">
               <Button size="lg" variant="secondary">
                 Sell Your Project
               </Button>
@@ -283,7 +283,7 @@ export default function HomePage() {
             List after you present. Keep ownership. Get paid when someone downloads your work.
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-            <Link href="/sell">
+            <Link href="/sign-up">
               <Button size="lg">Start selling</Button>
             </Link>
             <Link href="/marketplace">

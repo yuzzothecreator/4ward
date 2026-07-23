@@ -8,10 +8,10 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
 
 const links = [
-  { href: "/marketplace", label: "Product" },
+  { href: "/marketplace", label: "Marketplace" },
   { href: "/pricing", label: "Pricing" },
   { href: "/about", label: "About" },
-  { href: "/dashboard", label: "Docs" },
+  { href: "/sell", label: "Sell" },
 ];
 
 /** Linear-quiet top nav: logo, sparse links, login/CTA */
@@ -50,7 +50,7 @@ export function Navbar() {
               Log in
             </Button>
           </Link>
-          <Link href="/sell">
+          <Link href="/sign-up">
             <Button size="sm" className="text-[13px]">
               Sign up
             </Button>
@@ -81,7 +81,17 @@ export function Navbar() {
               {link.label}
             </Link>
           ))}
-          <Link href="/dashboard" onClick={() => setOpen(false)} className="mt-2">
+          <Link href="/sign-in" onClick={() => setOpen(false)} className="mt-2">
+            <Button variant="ghost" className="w-full" size="sm">
+              Log in
+            </Button>
+          </Link>
+          <Link href="/sign-up" onClick={() => setOpen(false)}>
+            <Button className="w-full" size="sm">
+              Sign up
+            </Button>
+          </Link>
+          <Link href="/dashboard" onClick={() => setOpen(false)}>
             <Button variant="secondary" className="w-full" size="sm">
               <LayoutDashboard className="h-4 w-4" />
               Dashboard

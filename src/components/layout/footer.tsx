@@ -33,8 +33,8 @@ const columns = [
     links: [
       { href: "/sign-in", label: "Log in" },
       { href: "/sign-up", label: "Sign up" },
-      { href: "/dashboard/admin", label: "Admin" },
-      { href: "/checkout", label: "Checkout" },
+      { href: "/sell", label: "Sell a project" },
+      { href: "/dashboard", label: "Dashboard" },
     ],
   },
 ];

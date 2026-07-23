@@ -46,7 +46,19 @@ export default function RootLayout({
   );
 
   if (clerkKey) {
-    return <ClerkProvider publishableKey={clerkKey}>{content}</ClerkProvider>;
+    return (
+      <ClerkProvider
+        publishableKey={clerkKey}
+        signInUrl="/sign-in"
+        signUpUrl="/sign-up"
+        signInForceRedirectUrl="/dashboard"
+        signInFallbackRedirectUrl="/dashboard"
+        signUpForceRedirectUrl="/sell"
+        signUpFallbackRedirectUrl="/sell"
+      >
+        {content}
+      </ClerkProvider>
+    );
   }
 
   return content;

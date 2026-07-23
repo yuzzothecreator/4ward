@@ -60,7 +60,15 @@ export default function PricingPage() {
                   </li>
                 ))}
               </ul>
-              <Link href={plan.name === "Creator" ? "/sell" : "/marketplace"}>
+              <Link
+                href={
+                  plan.name === "Creator"
+                    ? "/sign-up"
+                    : plan.name === "Campus"
+                      ? "/about"
+                      : "/marketplace"
+                }
+              >
                 <Button className="w-full" variant={plan.highlight ? "default" : "secondary"}>
                   Get started
                 </Button>
