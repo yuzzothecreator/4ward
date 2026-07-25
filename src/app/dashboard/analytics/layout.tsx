@@ -1,0 +1,18 @@
+import { RequireRole } from "@/components/auth/require-role";
+
+export default function SellerAnalyticsLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <RequireRole
+      roles={["SELLER", "ADMIN"]}
+      permission="dashboard:seller"
+      fallbackHref="/dashboard"
+      message="Seller access required."
+    >
+      {children}
+    </RequireRole>
+  );
+}

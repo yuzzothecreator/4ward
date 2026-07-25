@@ -2,10 +2,12 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Menu, X, LayoutDashboard } from "lucide-react";
+import { Menu, X, LayoutDashboard, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
+import { useAppStore } from "@/store/use-app-store";
+import { ROLE_LABELS } from "@/lib/rbac";
 
 const links = [
   { href: "/marketplace", label: "Marketplace" },
@@ -17,6 +19,10 @@ const links = [
 /** Linear-quiet top nav: logo, sparse links, login/CTA */
 export function Navbar() {
   const [open, setOpen] = useState(false);
+  const user = useAppStore((s) => s.user);
+  const signOut = useAppStore((s) => s.signOut);
+  const clerkEnabled = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
+  const signedIn = Boolean(user) || clerkEnabled;
 
   return (
     <header className="fixed inset-x-0 top-0 z-50 border-b border-border/80 bg-background/75 backdrop-blur-xl">
@@ -45,16 +51,57 @@ export function Navbar() {
 
         <div className="hidden items-center gap-2 md:flex">
           <ThemeToggle />
-          <Link href="/sign-in">
-            <Button variant="ghost" size="sm" className="text-[13px]">
-              Log in
-            </Button>
-          </Link>
-          <Link href="/sign-up">
-            <Button size="sm" className="text-[13px]">
-              Sign up
-            </Button>
-          </Link>
+          {user ? (
+            <>
+              <span className="hidden text-xs text-muted lg:inline">
+                {user.name}
+                <span className="ml-1.5 text-muted-foreground">
+                  · {ROLE_LABELS[user.role]}
+                </span>
+              </span>
+              <Link href="/dashboard">
+                <Button variant="ghost" size="sm" className="text-[13px]">
+                  <LayoutDashboard className="h-4 w-4" />
+                  Dashboard
+                </Button>
+              </Link>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-[13px]"
+                onClick={() => signOut()}
+              >
+                <LogOut className="h-4 w-4" />
+                Log out
+              </Button>
+            </>
+          ) : clerkEnabled ? (
+            <>
+              <Link href="/dashboard">
+                <Button variant="ghost" size="sm" className="text-[13px]">
+                  Dashboard
+                </Button>
+              </Link>
+              <Link href="/sign-in">
+                <Button variant="ghost" size="sm" className="text-[13px]">
+                  Log in
+                </Button>
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link href="/sign-in">
+                <Button variant="ghost" size="sm" className="text-[13px]">
+                  Log in
+                </Button>
+              </Link>
+              <Link href="/sign-up">
+                <Button size="sm" className="text-[13px]">
+                  Sign up
+                </Button>
+              </Link>
+            </>
+          )}
         </div>
 
         <div className="flex items-center gap-1 md:hidden">
@@ -81,22 +128,48 @@ export function Navbar() {
               {link.label}
             </Link>
           ))}
-          <Link href="/sign-in" onClick={() => setOpen(false)} className="mt-2">
-            <Button variant="ghost" className="w-full" size="sm">
-              Log in
-            </Button>
-          </Link>
-          <Link href="/sign-up" onClick={() => setOpen(false)}>
-            <Button className="w-full" size="sm">
-              Sign up
-            </Button>
-          </Link>
-          <Link href="/dashboard" onClick={() => setOpen(false)}>
-            <Button variant="secondary" className="w-full" size="sm">
-              <LayoutDashboard className="h-4 w-4" />
-              Dashboard
-            </Button>
-          </Link>
+          {user ? (
+            <>
+              <Link href="/dashboard" onClick={() => setOpen(false)} className="mt-2">
+                <Button variant="secondary" className="w-full" size="sm">
+                  <LayoutDashboard className="h-4 w-4" />
+                  Dashboard ({ROLE_LABELS[user.role]})
+                </Button>
+              </Link>
+              <Button
+                variant="ghost"
+                className="w-full"
+                size="sm"
+                onClick={() => {
+                  signOut();
+                  setOpen(false);
+                }}
+              >
+                Log out
+              </Button>
+            </>
+          ) : (
+            <>
+              <Link href="/sign-in" onClick={() => setOpen(false)} className="mt-2">
+                <Button variant="ghost" className="w-full" size="sm">
+                  Log in
+                </Button>
+              </Link>
+              <Link href="/sign-up" onClick={() => setOpen(false)}>
+                <Button className="w-full" size="sm">
+                  Sign up
+                </Button>
+              </Link>
+              {signedIn && (
+                <Link href="/dashboard" onClick={() => setOpen(false)}>
+                  <Button variant="secondary" className="w-full" size="sm">
+                    <LayoutDashboard className="h-4 w-4" />
+                    Dashboard
+                  </Button>
+                </Link>
+              )}
+            </>
+          )}
         </div>
       </div>
     </header>

@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAppStore } from "@/store/use-app-store";
+import { DEMO_ADMIN_EMAIL, defaultRedirectForRole } from "@/lib/rbac";
 
 export function DemoSignUp() {
   const router = useRouter();
@@ -17,6 +18,7 @@ export function DemoSignUp() {
   const [email, setEmail] = useState("");
   const [university, setUniversity] = useState("");
   const [password, setPassword] = useState("");
+  const [intent, setIntent] = useState<"BUYER" | "SELLER">("BUYER");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -30,8 +32,13 @@ export function DemoSignUp() {
     }
 
     setLoading(true);
-    signUp({ name, email, university: university || undefined });
-    const next = searchParams.get("next") || "/sell";
+    const user = signUp({
+      name,
+      email,
+      university: university || undefined,
+      intent,
+    });
+    const next = searchParams.get("next") || defaultRedirectForRole(user.role);
     router.push(next);
   }
 
@@ -40,11 +47,45 @@ export function DemoSignUp() {
       <CardHeader className="text-center">
         <CardTitle>Create your 4ward account</CardTitle>
         <CardDescription>
-          Register, then list a project and sell it on the marketplace.
+          Choose how you&apos;ll use the marketplace. You can sell later anytime.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={onSubmit} className="space-y-4">
+          <div>
+            <Label>I want to</Label>
+            <div className="mt-1.5 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setIntent("BUYER")}
+                className={`rounded-xl border px-3 py-2.5 text-left text-sm transition ${
+                  intent === "BUYER"
+                    ? "border-primary bg-primary/10 text-foreground"
+                    : "border-border text-muted hover:border-foreground/20"
+                }`}
+              >
+                <span className="font-medium text-foreground">Buy projects</span>
+                <span className="mt-0.5 block text-xs text-muted-foreground">
+                  Browse & purchase
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setIntent("SELLER")}
+                className={`rounded-xl border px-3 py-2.5 text-left text-sm transition ${
+                  intent === "SELLER"
+                    ? "border-primary bg-primary/10 text-foreground"
+                    : "border-border text-muted hover:border-foreground/20"
+                }`}
+              >
+                <span className="font-medium text-foreground">Sell projects</span>
+                <span className="mt-0.5 block text-xs text-muted-foreground">
+                  List & earn
+                </span>
+              </button>
+            </div>
+          </div>
+
           <div>
             <Label htmlFor="name">Name</Label>
             <Input
@@ -100,6 +141,11 @@ export function DemoSignUp() {
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? "Creating account…" : "Create account"}
           </Button>
+
+          <p className="text-center text-xs text-muted-foreground">
+            Demo admin: sign in as{" "}
+            <span className="text-foreground">{DEMO_ADMIN_EMAIL}</span>
+          </p>
 
           <p className="text-center text-xs text-muted-foreground">
             Already have an account?{" "}

@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAppStore } from "@/store/use-app-store";
+import { DEMO_ADMIN_EMAIL, defaultRedirectForRole } from "@/lib/rbac";
 
 function DemoSignInForm() {
   const router = useRouter();
@@ -28,8 +29,8 @@ function DemoSignInForm() {
     }
 
     setLoading(true);
-    signIn({ email });
-    const next = searchParams.get("next") || "/dashboard";
+    const user = signIn({ email });
+    const next = searchParams.get("next") || defaultRedirectForRole(user.role);
     router.push(next);
   }
 
@@ -37,7 +38,9 @@ function DemoSignInForm() {
     <Card className="w-full max-w-md border-border bg-card">
       <CardHeader className="text-center">
         <CardTitle>Sign in to 4ward</CardTitle>
-        <CardDescription>Access your dashboard, listings, and purchases.</CardDescription>
+        <CardDescription>
+          Access your dashboard. Demo admin: {DEMO_ADMIN_EMAIL}
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={onSubmit} className="space-y-4">

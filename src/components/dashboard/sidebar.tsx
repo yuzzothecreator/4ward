@@ -12,30 +12,111 @@ import {
   MessageSquare,
   Settings,
   Package,
+  type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePathname } from "next/navigation";
+import { useAppStore } from "@/store/use-app-store";
+import {
+  type AppRole,
+  type Permission,
+  ROLE_LABELS,
+  hasPermission,
+} from "@/lib/rbac";
 
-const sellerLinks = [
-  { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
-  { href: "/dashboard/projects", label: "Projects", icon: FolderKanban },
-  { href: "/dashboard/orders", label: "Orders", icon: ShoppingBag },
-  { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },
-  { href: "/dashboard/purchases", label: "Purchases", icon: Package },
-  { href: "/dashboard/wishlist", label: "Wishlist", icon: Heart },
-  { href: "/dashboard/messages", label: "Messages", icon: MessageSquare },
-  { href: "/dashboard/profile", label: "Profile", icon: Settings },
-  { href: "/dashboard/admin", label: "Admin", icon: Shield },
-  { href: "/dashboard/admin/users", label: "Users", icon: Users },
+type NavItem = {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  /** Shown when user has any of these permissions */
+  permissions: Permission[];
+};
+
+const navItems: NavItem[] = [
+  {
+    href: "/dashboard",
+    label: "Overview",
+    icon: LayoutDashboard,
+    permissions: ["dashboard:buyer", "dashboard:seller", "admin:access"],
+  },
+  {
+    href: "/dashboard/projects",
+    label: "Projects",
+    icon: FolderKanban,
+    permissions: ["dashboard:seller"],
+  },
+  {
+    href: "/dashboard/orders",
+    label: "Orders",
+    icon: ShoppingBag,
+    permissions: ["dashboard:seller"],
+  },
+  {
+    href: "/dashboard/analytics",
+    label: "Analytics",
+    icon: BarChart3,
+    permissions: ["dashboard:seller"],
+  },
+  {
+    href: "/dashboard/purchases",
+    label: "Purchases",
+    icon: Package,
+    permissions: ["dashboard:buyer"],
+  },
+  {
+    href: "/dashboard/wishlist",
+    label: "Wishlist",
+    icon: Heart,
+    permissions: ["dashboard:buyer"],
+  },
+  {
+    href: "/dashboard/messages",
+    label: "Messages",
+    icon: MessageSquare,
+    permissions: ["dashboard:buyer"],
+  },
+  {
+    href: "/dashboard/profile",
+    label: "Profile",
+    icon: Settings,
+    permissions: ["dashboard:buyer"],
+  },
+  {
+    href: "/dashboard/admin",
+    label: "Admin",
+    icon: Shield,
+    permissions: ["admin:access"],
+  },
+  {
+    href: "/dashboard/admin/users",
+    label: "Users",
+    icon: Users,
+    permissions: ["admin:users"],
+  },
 ];
+
+function useVisibleLinks() {
+  const user = useAppStore((s) => s.user);
+  const clerkEnabled = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
+  // Clerk mode: show full seller+buyer nav until metadata is wired client-side;
+  // admin links stay hidden unless we can read role (demo only for now).
+  const role: AppRole | null = user?.role ?? (clerkEnabled ? "SELLER" : null);
+
+  return navItems.filter((item) =>
+    item.permissions.some((p) => hasPermission(role, p))
+  );
+}
 
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
+  const links = useVisibleLinks();
 
   return (
     <nav className="space-y-1">
-      {sellerLinks.map((link) => {
-        const active = pathname === link.href;
+      {links.map((link) => {
+        const active =
+          pathname === link.href ||
+          (link.href !== "/dashboard" && pathname.startsWith(link.href));
         return (
           <Link
             key={link.href}
@@ -58,21 +139,30 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
 }
 
 export function DashboardSidebar() {
+  const user = useAppStore((s) => s.user);
+
   return (
     <aside className="hidden w-60 shrink-0 border-r border-border bg-card/40 p-4 lg:block">
-      <p className="mb-4 px-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+      <p className="mb-1 px-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         Dashboard
       </p>
+      {user?.role && (
+        <p className="mb-4 px-2 text-xs text-muted">
+          Role: <span className="text-foreground">{ROLE_LABELS[user.role]}</span>
+        </p>
+      )}
       <NavLinks />
     </aside>
   );
 }
 
 export function DashboardMobileNav() {
+  const links = useVisibleLinks();
+
   return (
     <div className="mb-4 overflow-x-auto lg:hidden">
       <div className="flex min-w-max gap-2 pb-1">
-        {sellerLinks.map((link) => (
+        {links.map((link) => (
           <MobileChip key={link.href} href={link.href} label={link.label} icon={link.icon} />
         ))}
       </div>

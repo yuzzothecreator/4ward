@@ -3,6 +3,7 @@ import { projectSchema } from "@/lib/validations";
 import { slugify } from "@/lib/utils";
 import { rateLimit } from "@/lib/rate-limit";
 import { getPrisma, pingDatabase } from "@/lib/prisma";
+import { assertApiRole } from "@/lib/auth";
 
 export async function GET() {
   const db = await pingDatabase();
@@ -49,6 +50,9 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
+    const gate = await assertApiRole(["SELLER", "ADMIN", "BUYER"]);
+    if (!gate.ok) return gate.response;
+
     const ip = req.headers.get("x-forwarded-for") || "anon";
     const limited = rateLimit(`projects:${ip}`, 20, 60_000);
     if (!limited.success) {

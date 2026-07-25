@@ -4,12 +4,18 @@ import type { DemoProject } from "@/lib/demo-data";
 import { demoProjects } from "@/lib/demo-data";
 import { slugify } from "@/lib/utils";
 import type { ProjectFormValues } from "@/lib/validations";
+import {
+  type AppRole,
+  elevateRole,
+  roleFromEmail,
+} from "@/lib/rbac";
 
 export type DemoUser = {
   name: string;
   email: string;
   username: string;
   university: string;
+  role: AppRole;
   createdAt: string;
 };
 
@@ -38,9 +44,16 @@ type AppState = {
   favorites: string[];
   cart: CartItem[];
 
-  signUp: (data: { name: string; email: string; university?: string }) => DemoUser;
+  signUp: (data: {
+    name: string;
+    email: string;
+    university?: string;
+    intent?: "BUYER" | "SELLER";
+  }) => DemoUser;
   signIn: (data: { email: string; name?: string }) => DemoUser;
   signOut: () => void;
+  setRole: (role: AppRole) => void;
+  promoteToSeller: () => void;
 
   addListing: (
     values: ProjectFormValues,
@@ -77,12 +90,14 @@ export const useAppStore = create<AppState>()(
       favorites: [],
       cart: [],
 
-      signUp: ({ name, email, university }) => {
+      signUp: ({ name, email, university, intent }) => {
+        const normalized = email.trim().toLowerCase();
         const user: DemoUser = {
           name: name.trim(),
-          email: email.trim().toLowerCase(),
+          email: normalized,
           username: usernameFromEmail(email, name),
           university: university?.trim() || "University of Dar es Salaam",
+          role: roleFromEmail(normalized, intent === "SELLER" ? "SELLER" : "BUYER"),
           createdAt: new Date().toISOString(),
         };
         set({ user });
@@ -94,12 +109,16 @@ export const useAppStore = create<AppState>()(
         const normalized = email.trim().toLowerCase();
         const user: DemoUser =
           existing?.email === normalized
-            ? existing
+            ? {
+                ...existing,
+                role: roleFromEmail(normalized, existing.role || "BUYER"),
+              }
             : {
                 name: name?.trim() || normalized.split("@")[0],
                 email: normalized,
                 username: usernameFromEmail(normalized, name || normalized),
                 university: existing?.university || "University of Dar es Salaam",
+                role: roleFromEmail(normalized, "BUYER"),
                 createdAt: existing?.createdAt || new Date().toISOString(),
               };
         set({ user });
@@ -108,8 +127,23 @@ export const useAppStore = create<AppState>()(
 
       signOut: () => set({ user: null }),
 
+      setRole: (role) => {
+        const user = get().user;
+        if (!user) return;
+        set({ user: { ...user, role } });
+      },
+
+      promoteToSeller: () => {
+        const user = get().user;
+        if (!user) return;
+        set({ user: { ...user, role: elevateRole(user.role, "SELLER") } });
+      },
+
       addListing: (values, opts) => {
         const user = get().user;
+        if (user) {
+          set({ user: { ...user, role: elevateRole(user.role, "SELLER") } });
+        }
         const status = opts?.status || "PUBLISHED";
         const pricingType =
           values.pricingType === "FREE" || values.price === 0 ? "FREE" : "PAID";
@@ -217,7 +251,19 @@ export const useAppStore = create<AppState>()(
         })),
       clearCart: () => set({ cart: [] }),
     }),
-    { name: "4ward-store" }
+    {
+      name: "4ward-store",
+      merge: (persisted, current) => {
+        const p = (persisted || {}) as Partial<AppState>;
+        const user = p.user
+          ? {
+              ...p.user,
+              role: roleFromEmail(p.user.email, p.user.role || "BUYER"),
+            }
+          : null;
+        return { ...current, ...p, user };
+      },
+    }
   )
 );
 
