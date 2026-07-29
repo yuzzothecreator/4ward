@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAppStore } from "@/store/use-app-store";
 import { DEMO_ADMIN_EMAIL, defaultRedirectForRole } from "@/lib/rbac";
+import { clearAdminToken, ensureAdminSession } from "@/lib/admin-session";
 
 function DemoSignInForm() {
   const router = useRouter();
@@ -19,7 +20,7 @@ function DemoSignInForm() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  function onSubmit(e: FormEvent) {
+  async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError("");
 
@@ -32,10 +33,8 @@ function DemoSignInForm() {
     try {
       const user = signIn({ email });
       if (user.role === "ADMIN") {
-        const { ensureAdminSession } = await import("@/lib/admin-session");
         await ensureAdminSession(user);
       } else {
-        const { clearAdminToken } = await import("@/lib/admin-session");
         clearAdminToken();
       }
       const next = searchParams.get("next") || defaultRedirectForRole(user.role);
