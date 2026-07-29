@@ -49,6 +49,16 @@ Schema tables (`User`, `Project`, `Purchase`, …) are applied on the linked DB.
 
 Checkout flow: buyer enters phone → USSD push → approve on phone → purchase unlocks.
 
+## 3b. Admin user management (real data)
+
+Sign in as `admin@4ward.com` (demo) or a DB user with role `ADMIN`.
+
+- `/dashboard/admin` — live counts (users, GMV, pending listings)
+- `/dashboard/admin/users` — search/filter users; edit name, university, role, approval
+- APIs: `GET/PATCH/POST /api/admin/users`, `GET /api/admin/stats`, `PATCH /api/admin/projects`
+
+All admin writes go to Postgres (`User` / `Project` tables).
+
 ## 4. Stripe (optional card payments)
 
 1. [Stripe test keys](https://dashboard.stripe.com/test/apikeys)
