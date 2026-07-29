@@ -116,8 +116,18 @@ export default function AnalyticsPage() {
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={monthly}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                  <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-                  <YAxis tick={{ fontSize: 12 }} />
+                  <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                  <YAxis
+                    tick={{ fontSize: 10 }}
+                    width={48}
+                    tickFormatter={(v) =>
+                      Number(v) >= 1_000_000
+                        ? `${Math.round(Number(v) / 1_000_000)}M`
+                        : Number(v) >= 1000
+                          ? `${Math.round(Number(v) / 1000)}K`
+                          : String(v)
+                    }
+                  />
                   <Tooltip
                     formatter={(value) => formatPrice(Number(value || 0))}
                   />
@@ -140,8 +150,15 @@ export default function AnalyticsPage() {
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={popular}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                  <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
+                  <XAxis
+                    dataKey="name"
+                    tick={{ fontSize: 10 }}
+                    interval={0}
+                    angle={-20}
+                    textAnchor="end"
+                    height={60}
+                  />
+                  <YAxis tick={{ fontSize: 11 }} allowDecimals={false} width={28} />
                   <Tooltip />
                   <Bar dataKey="sales" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} />
                 </BarChart>

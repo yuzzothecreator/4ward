@@ -27,8 +27,8 @@ export function HeroProductMock() {
           <span className="h-2.5 w-2.5 rounded-full bg-foreground/15" />
           <div className="ml-3 flex flex-1 items-center gap-4 text-xs text-muted">
             <span className="text-foreground">Marketplace</span>
-            <span>Sell</span>
-            <span>Dashboard</span>
+            <span className="hidden sm:inline">Sell</span>
+            <span className="hidden sm:inline">Dashboard</span>
           </div>
         </div>
 

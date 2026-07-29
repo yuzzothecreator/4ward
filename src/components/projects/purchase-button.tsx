@@ -62,18 +62,19 @@ export function PurchaseButton({ project }: { project: DemoProject }) {
   }
 
   return (
-    <div className="flex gap-2">
-      <Button className="flex-1" onClick={handlePurchase} disabled={loading}>
+    <div className="flex w-full gap-2">
+      <Button className="min-w-0 flex-1" onClick={handlePurchase} disabled={loading}>
         {loading ? (
           <Loader2 className="h-4 w-4 animate-spin" />
         ) : (
-          <ShoppingCart className="h-4 w-4" />
+          <ShoppingCart className="h-4 w-4 shrink-0" />
         )}
         {project.price === 0 ? "Get free" : "Buy now"}
       </Button>
       <Button
         variant="secondary"
         size="icon"
+        className="shrink-0"
         onClick={() => toggleFavorite(project.id)}
         aria-label="Favorite"
       >

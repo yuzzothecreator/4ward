@@ -35,10 +35,10 @@ export default function RootLayout({
       data-scroll-behavior="smooth"
       className={`${geistMono.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col bg-background font-sans text-foreground">
+      <body className="flex min-h-full flex-col overflow-x-clip bg-background font-sans text-foreground">
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
           <Navbar />
-          <main className="flex-1 pt-14">{children}</main>
+          <main className="min-w-0 flex-1 pt-14">{children}</main>
           <Footer />
         </ThemeProvider>
       </body>

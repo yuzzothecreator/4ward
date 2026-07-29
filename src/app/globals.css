@@ -94,6 +94,7 @@
 
 html {
   scroll-behavior: smooth;
+  overflow-x: clip;
 }
 
 body {
@@ -101,6 +102,7 @@ body {
   color: var(--foreground);
   font-family: "Space Grotesk", system-ui, sans-serif;
   min-height: 100vh;
+  overflow-x: clip;
   transition: background-color 0.25s ease, color 0.25s ease;
 }
 

@@ -382,14 +382,16 @@ function SellForm() {
             <Button
               type="button"
               variant="secondary"
-              disabled={isSubmitting}
+              className="w-full sm:w-auto"
+              disabled={isSubmitting || uploading}
               onClick={handleSubmit((v) => onSubmit(v, true))}
             >
               Save draft
             </Button>
             <Button
               type="button"
-              disabled={isSubmitting}
+              className="w-full sm:w-auto"
+              disabled={isSubmitting || uploading}
               onClick={handleSubmit((v) => onSubmit(v, false))}
             >
               {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}

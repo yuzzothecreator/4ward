@@ -312,17 +312,18 @@ export default function AdminPage() {
               sellers.map((u) => (
                 <div
                   key={u.id}
-                  className="flex items-center justify-between rounded-xl border border-border p-3"
+                  className="flex flex-col gap-3 rounded-xl border border-border p-3 sm:flex-row sm:items-center sm:justify-between"
                 >
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-sm font-medium text-foreground">{u.name}</p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="truncate text-xs text-muted-foreground">
                       {u.university || "—"} · {u.email}
                     </p>
                   </div>
                   <Button
                     size="sm"
                     variant="outline"
+                    className="w-full shrink-0 sm:w-auto"
                     disabled={busyId === u.id}
                     onClick={() => approveSeller(u.id)}
                   >
@@ -376,15 +377,15 @@ export default function AdminPage() {
               recentUsers.map((u) => (
                 <div
                   key={u.id}
-                  className="flex items-center justify-between rounded-xl border border-border p-3"
+                  className="flex flex-col gap-3 rounded-xl border border-border p-3 sm:flex-row sm:items-center sm:justify-between"
                 >
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-sm font-medium text-foreground">{u.name}</p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="truncate text-xs text-muted-foreground">
                       {u.email} · {new Date(u.createdAt).toLocaleDateString()}
                     </p>
                   </div>
-                  <Badge variant={u.role === "ADMIN" ? "neon" : "secondary"}>
+                  <Badge variant={u.role === "ADMIN" ? "neon" : "secondary"} className="w-fit shrink-0">
                     {ROLE_LABELS[u.role]}
                   </Badge>
                 </div>

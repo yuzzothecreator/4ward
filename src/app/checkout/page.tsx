@@ -208,12 +208,12 @@ function CheckoutInner() {
         <p className="mt-2 text-muted">
           {project.title} is ready to download from your dashboard.
         </p>
-        <div className="mt-6 flex gap-3">
-          <Link href="/dashboard/purchases">
-            <Button>Go to purchases</Button>
+        <div className="mt-6 flex w-full flex-col gap-3 sm:flex-row sm:justify-center">
+          <Link href="/dashboard/purchases" className="w-full sm:w-auto">
+            <Button className="w-full">Go to purchases</Button>
           </Link>
-          <Link href={`/projects/${project.slug}`}>
-            <Button variant="secondary">View project</Button>
+          <Link href={`/projects/${project.slug}`} className="w-full sm:w-auto">
+            <Button variant="secondary" className="w-full">View project</Button>
           </Link>
         </div>
       </div>
@@ -230,9 +230,9 @@ function CheckoutInner() {
           </p>
         </CardHeader>
         <CardContent className="space-y-5">
-          <div className="flex justify-between text-sm">
-            <span className="text-muted">{project.title}</span>
-            <span className="font-semibold text-foreground">
+          <div className="flex items-start justify-between gap-3 text-sm">
+            <span className="min-w-0 truncate text-muted">{project.title}</span>
+            <span className="shrink-0 font-semibold text-foreground">
               {formatPrice(project.price)}
             </span>
           </div>
@@ -327,17 +327,24 @@ function CheckoutInner() {
                     </p>
                   )}
                   <Button
-                    className="w-full"
+                    className="w-full text-sm leading-snug"
                     disabled={loading || polling || !phone.trim()}
                     onClick={payWithClickPesa}
                   >
                     {(loading || polling) && (
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
                     )}
-                    {polling
-                      ? "Waiting for phone approval…"
-                      : `Pay ${formatPrice(project.price)} with mobile money`}
+                    <span className="text-center">
+                      {polling
+                        ? "Waiting for phone approval…"
+                        : `Pay ${formatPrice(project.price)}`}
+                    </span>
                   </Button>
+                  {!polling && (
+                    <p className="text-center text-xs text-muted-foreground">
+                      Mobile money (M-Pesa, Mixx, Airtel, HaloPesa)
+                    </p>
+                  )}
                 </div>
               )}
 

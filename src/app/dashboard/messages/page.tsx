@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Send } from "lucide-react";
+import { ArrowLeft, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -36,11 +36,13 @@ export default function MessagesPage() {
   const [active, setActive] = useState(threads[0]);
   const [text, setText] = useState("");
   const [msgs, setMsgs] = useState(active.messages);
+  const [mobileShowChat, setMobileShowChat] = useState(false);
 
   function selectThread(id: string) {
     const t = threads.find((x) => x.id === id)!;
     setActive(t);
     setMsgs(t.messages);
+    setMobileShowChat(true);
   }
 
   function send() {
@@ -55,8 +57,13 @@ export default function MessagesPage() {
         <h1 className="text-2xl font-bold text-foreground">Messages</h1>
         <p className="text-muted">Buyer ↔ seller communication.</p>
       </div>
-      <div className="grid h-[560px] gap-4 lg:grid-cols-3">
-        <Card className="overflow-hidden lg:col-span-1">
+      <div className="grid gap-4 lg:h-[560px] lg:grid-cols-3">
+        <Card
+          className={cn(
+            "overflow-hidden lg:col-span-1",
+            mobileShowChat ? "hidden lg:block" : "block"
+          )}
+        >
           <CardHeader>
             <CardTitle className="text-base">Conversations</CardTitle>
           </CardHeader>
@@ -83,8 +90,23 @@ export default function MessagesPage() {
           </CardContent>
         </Card>
 
-        <Card className="flex flex-col lg:col-span-2">
-          <CardHeader className="border-b border-border">
+        <Card
+          className={cn(
+            "flex min-h-[420px] flex-col lg:col-span-2 lg:min-h-0",
+            mobileShowChat ? "flex" : "hidden lg:flex"
+          )}
+        >
+          <CardHeader className="flex flex-row items-center gap-2 border-b border-border">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="lg:hidden"
+              onClick={() => setMobileShowChat(false)}
+              aria-label="Back to conversations"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
             <CardTitle className="text-base">{active.name}</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-1 flex-col gap-3 overflow-y-auto p-4">
@@ -92,24 +114,25 @@ export default function MessagesPage() {
               <div
                 key={i}
                 className={cn(
-                  "max-w-[80%] rounded-2xl px-4 py-2 text-sm",
+                  "max-w-[85%] rounded-2xl px-4 py-2 text-sm sm:max-w-[80%]",
                   m.from === "me"
-                    ? "ml-auto bg-primary text-foreground"
-                    : "bg-white/10 text-zinc-200"
+                    ? "ml-auto bg-primary text-primary-foreground"
+                    : "bg-foreground/10 text-foreground"
                 )}
               >
                 {m.text}
               </div>
             ))}
           </CardContent>
-          <div className="flex gap-2 border-t border-border p-4">
+          <div className="flex gap-2 border-t border-border p-3 sm:p-4">
             <Input
               value={text}
               onChange={(e) => setText(e.target.value)}
               placeholder="Type a message..."
               onKeyDown={(e) => e.key === "Enter" && send()}
+              className="min-w-0"
             />
-            <Button onClick={send}>
+            <Button onClick={send} className="shrink-0" aria-label="Send">
               <Send className="h-4 w-4" />
             </Button>
           </div>

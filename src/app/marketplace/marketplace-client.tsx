@@ -110,7 +110,7 @@ export default function MarketplacePage() {
               <select
                 value={tech}
                 onChange={(e) => setTech(e.target.value)}
-                className="h-11 w-full rounded-xl border border-border bg-foreground/5 px-3 text-sm text-foreground"
+                className="h-11 w-full rounded-xl border border-border bg-foreground/5 px-3 text-base text-foreground md:text-sm"
               >
                 <option value="">Any</option>
                 {TECHNOLOGIES.map((t) => (
@@ -125,7 +125,7 @@ export default function MarketplacePage() {
               <select
                 value={university}
                 onChange={(e) => setUniversity(e.target.value)}
-                className="h-11 w-full rounded-xl border border-border bg-foreground/5 px-3 text-sm text-foreground"
+                className="h-11 w-full rounded-xl border border-border bg-foreground/5 px-3 text-base text-foreground md:text-sm"
               >
                 <option value="">Any</option>
                 {universities.map((u) => (
@@ -140,7 +140,7 @@ export default function MarketplacePage() {
               <select
                 value={priceRange}
                 onChange={(e) => setPriceRange(e.target.value as typeof priceRange)}
-                className="h-11 w-full rounded-xl border border-border bg-foreground/5 px-3 text-sm text-foreground"
+                className="h-11 w-full rounded-xl border border-border bg-foreground/5 px-3 text-base text-foreground md:text-sm"
               >
                 <option value="all" className="bg-card text-foreground">All prices</option>
                 <option value="free" className="bg-card text-foreground">Free</option>
@@ -154,7 +154,7 @@ export default function MarketplacePage() {
               <select
                 value={minRating}
                 onChange={(e) => setMinRating(Number(e.target.value))}
-                className="h-11 w-full rounded-xl border border-border bg-foreground/5 px-3 text-sm text-foreground"
+                className="h-11 w-full rounded-xl border border-border bg-foreground/5 px-3 text-base text-foreground md:text-sm"
               >
                 <option value={0} className="bg-card text-foreground">Any</option>
                 <option value={4} className="bg-card text-foreground">4+</option>

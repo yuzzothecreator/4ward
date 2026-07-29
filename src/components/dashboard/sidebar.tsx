@@ -28,7 +28,6 @@ type NavItem = {
   href: string;
   label: string;
   icon: LucideIcon;
-  /** Shown when user has any of these permissions */
   permissions: Permission[];
 };
 
@@ -98,12 +97,17 @@ const navItems: NavItem[] = [
 function useVisibleLinks() {
   const user = useAppStore((s) => s.user);
   const clerkEnabled = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
-  // Clerk mode: show full seller+buyer nav until metadata is wired client-side;
-  // admin links stay hidden unless we can read role (demo only for now).
   const role: AppRole | null = user?.role ?? (clerkEnabled ? "SELLER" : null);
 
   return navItems.filter((item) =>
     item.permissions.some((p) => hasPermission(role, p))
+  );
+}
+
+function isActivePath(pathname: string, href: string) {
+  return (
+    pathname === href ||
+    (href !== "/dashboard" && pathname.startsWith(href))
   );
 }
 
@@ -114,9 +118,7 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <nav className="space-y-1">
       {links.map((link) => {
-        const active =
-          pathname === link.href ||
-          (link.href !== "/dashboard" && pathname.startsWith(link.href));
+        const active = isActivePath(pathname, link.href);
         return (
           <Link
             key={link.href}
@@ -158,41 +160,30 @@ export function DashboardSidebar() {
 
 export function DashboardMobileNav() {
   const links = useVisibleLinks();
+  const pathname = usePathname();
 
   return (
-    <div className="mb-4 overflow-x-auto lg:hidden">
-      <div className="flex min-w-max gap-2 pb-1">
-        {links.map((link) => (
-          <MobileChip key={link.href} href={link.href} label={link.label} icon={link.icon} />
-        ))}
+    <div className="mb-4 lg:hidden">
+      <div className="flex flex-wrap gap-2">
+        {links.map((link) => {
+          const active = isActivePath(pathname, link.href);
+          return (
+            <Link
+              key={link.href}
+              href={link.href}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs",
+                active
+                  ? "border-primary bg-primary/20 text-primary"
+                  : "border-border text-muted"
+              )}
+            >
+              <link.icon className="h-3.5 w-3.5" />
+              {link.label}
+            </Link>
+          );
+        })}
       </div>
     </div>
-  );
-}
-
-function MobileChip({
-  href,
-  label,
-  icon: Icon,
-}: {
-  href: string;
-  label: string;
-  icon: React.ComponentType<{ className?: string }>;
-}) {
-  const pathname = usePathname();
-  const active = pathname === href;
-  return (
-    <Link
-      href={href}
-      className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs whitespace-nowrap",
-        active
-          ? "border-primary bg-primary/20 text-primary"
-          : "border-border text-muted"
-      )}
-    >
-      <Icon className="h-3.5 w-3.5" />
-      {label}
-    </Link>
   );
 }

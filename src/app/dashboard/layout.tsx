@@ -6,7 +6,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <RequireAuth redirectTo="/sign-in">
       <div className="gradient-mesh flex min-h-[calc(100vh-4rem)]">
         <DashboardSidebar />
-        <div className="flex-1 overflow-auto p-4 sm:p-6 lg:p-8">
+        <div className="min-w-0 flex-1 overflow-x-clip overflow-y-auto p-4 sm:p-6 lg:p-8">
           <DashboardMobileNav />
           {children}
         </div>

@@ -30,7 +30,7 @@ export function ProjectCard({ project, index = 0 }: { project: DemoProject; inde
           e.preventDefault();
           toggleFavorite(project.id);
         }}
-        className="absolute right-3 top-3 z-10 rounded-md border border-border bg-card/90 p-1.5 text-muted opacity-0 backdrop-blur transition hover:text-foreground group-hover:opacity-100"
+        className="absolute right-3 top-3 z-10 rounded-md border border-border bg-card/90 p-1.5 text-muted opacity-100 backdrop-blur transition hover:text-foreground [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100"
         aria-label={fav ? "Remove from wishlist" : "Add to wishlist"}
       >
         <Heart className={`h-3.5 w-3.5 ${fav ? "fill-foreground text-foreground" : ""}`} />

@@ -80,21 +80,21 @@ export default function ProjectDetailPage() {
             </div>
 
             <Card>
-              <CardContent className="grid grid-cols-3 gap-4 p-6 text-center">
-                <div>
-                  <p className="text-2xl font-bold text-foreground">{formatNumber(project.views)}</p>
-                  <p className="text-xs text-muted-foreground">Views</p>
+              <CardContent className="grid grid-cols-3 gap-2 p-4 text-center sm:gap-4 sm:p-6">
+                <div className="min-w-0">
+                  <p className="text-lg font-bold text-foreground sm:text-2xl">{formatNumber(project.views)}</p>
+                  <p className="text-[10px] text-muted-foreground sm:text-xs">Views</p>
                 </div>
-                <div>
-                  <p className="text-2xl font-bold text-foreground">{formatNumber(project.downloads)}</p>
-                  <p className="text-xs text-muted-foreground">Downloads</p>
+                <div className="min-w-0">
+                  <p className="text-lg font-bold text-foreground sm:text-2xl">{formatNumber(project.downloads)}</p>
+                  <p className="text-[10px] text-muted-foreground sm:text-xs">Downloads</p>
                 </div>
-                <div>
-                  <p className="flex items-center justify-center gap-1 text-2xl font-bold text-amber-400">
-                    <Star className="h-5 w-5 fill-amber-400" />
+                <div className="min-w-0">
+                  <p className="flex items-center justify-center gap-1 text-lg font-bold text-amber-400 sm:text-2xl">
+                    <Star className="h-4 w-4 fill-amber-400 sm:h-5 sm:w-5" />
                     {project.rating}
                   </p>
-                  <p className="text-xs text-muted-foreground">{project.reviewCount} reviews</p>
+                  <p className="text-[10px] text-muted-foreground sm:text-xs">{project.reviewCount} reviews</p>
                 </div>
               </CardContent>
             </Card>
