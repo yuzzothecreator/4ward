@@ -6,6 +6,7 @@ import {
   type ClickPesaPaymentStatus,
 } from "@/lib/clickpesa";
 import { getEnvConfig } from "@/lib/env";
+import { fulfillClickPesaOrder } from "@/lib/orders";
 
 export const dynamic = "force-dynamic";
 
@@ -26,9 +27,7 @@ type WebhookBody = {
 };
 
 /**
- * ClickPesa application webhook.
- * Configure in merchant dashboard → Settings → Developers → Application webhooks:
- *   PAYMENT RECEIVED / PAYMENT FAILED → {APP_URL}/api/webhooks/clickpesa
+ * ClickPesa application webhook — fulfills Purchase + Transaction on success.
  */
 export async function POST(req: Request) {
   try {
@@ -56,33 +55,40 @@ export async function POST(req: Request) {
     }
 
     const pending = getPendingPayment(orderReference);
-    if (pending) {
-      if (event === "PAYMENT RECEIVED" || status === "SUCCESS" || status === "SETTLED") {
-        updatePendingPayment(orderReference, {
-          status: "SUCCESS",
-          channel: body.data?.channel,
-          clickpesaId: body.data?.id,
-          message: body.data?.message || "Payment received",
-        });
-      } else if (event === "PAYMENT FAILED" || status === "FAILED") {
-        updatePendingPayment(orderReference, {
-          status: "FAILED",
-          channel: body.data?.channel,
-          clickpesaId: body.data?.id,
-          message: body.data?.message || "Payment failed",
-        });
-      }
+
+    if (event === "PAYMENT RECEIVED" || status === "SUCCESS" || status === "SETTLED") {
+      updatePendingPayment(orderReference, {
+        status: "SUCCESS",
+        channel: body.data?.channel,
+        clickpesaId: body.data?.id,
+        message: body.data?.message || "Payment received",
+      });
+
+      const result = await fulfillClickPesaOrder(orderReference);
+      console.info("[audit] clickpesa.webhook.fulfilled", {
+        event,
+        orderReference,
+        ok: result.ok,
+        purchaseId: result.ok ? result.purchase.id : undefined,
+        knownOrder: Boolean(pending),
+      });
+
+      return NextResponse.json({
+        received: true,
+        fulfilled: result.ok,
+        purchaseId: result.ok ? result.purchase.id : undefined,
+      });
     }
 
-    console.info("[audit] clickpesa.webhook", {
-      event,
-      orderReference,
-      status,
-      channel: body.data?.channel,
-      knownOrder: Boolean(pending),
-    });
+    if (event === "PAYMENT FAILED" || status === "FAILED") {
+      updatePendingPayment(orderReference, {
+        status: "FAILED",
+        channel: body.data?.channel,
+        clickpesaId: body.data?.id,
+        message: body.data?.message || "Payment failed",
+      });
+    }
 
-    // Acknowledge quickly — ClickPesa expects 2xx
     return NextResponse.json({ received: true });
   } catch (err) {
     console.error("[clickpesa.webhook]", err);

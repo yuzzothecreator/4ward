@@ -19,9 +19,14 @@ import type { DemoProject } from "@/lib/demo-data";
 
 function SellForm() {
   const addListing = useAppStore((s) => s.addListing);
+  const user = useAppStore((s) => s.user);
   const [selectedTech, setSelectedTech] = useState<string[]>([]);
   const [generating, setGenerating] = useState(false);
   const [published, setPublished] = useState<DemoProject | null>(null);
+  const [sourceFile, setSourceFile] = useState<File | null>(null);
+  const [sourcePath, setSourcePath] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadMsg, setUploadMsg] = useState("");
 
   const {
     register,
@@ -71,18 +76,57 @@ function SellForm() {
     }
   }
 
+  async function uploadSource(file: File, slugHint: string) {
+    setUploading(true);
+    setUploadMsg("");
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      form.append("slug", slugHint);
+      form.append("kind", "source");
+      const res = await fetch("/api/uploads/project", { method: "POST", body: form });
+      const data = await res.json();
+      if (!res.ok) {
+        setUploadMsg(data.error || "Upload failed");
+        return null;
+      }
+      setSourcePath(data.path);
+      setUploadMsg(
+        data.demo
+          ? "Stored in demo mode (add Supabase keys for real files)."
+          : "Source ZIP uploaded securely."
+      );
+      return data.path as string;
+    } catch {
+      setUploadMsg("Upload failed");
+      return null;
+    } finally {
+      setUploading(false);
+    }
+  }
+
   async function onSubmit(values: ProjectFormValues, asDraft: boolean) {
+    let path = sourcePath;
+    if (sourceFile && !path) {
+      path = await uploadSource(sourceFile, values.title);
+    }
+
     const project = addListing(values, {
       status: asDraft ? "DRAFT" : "PUBLISHED",
+      sourceFile: path || undefined,
     });
 
-    // Keep API in sync for server demos
     await fetch("/api/projects", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         ...values,
         status: asDraft ? "DRAFT" : "PUBLISHED",
+        sourceFile: path || undefined,
+        sellerEmail: user?.email,
+        sellerName: user?.name,
+        sellerUsername: user?.username,
+        university: user?.university,
       }),
     }).catch(() => null);
 
@@ -232,20 +276,43 @@ function SellForm() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-3 sm:grid-cols-2">
-                {["Screenshots", "Demo video", "Documentation PDF", "Source code ZIP"].map(
-                  (label) => (
-                    <label
-                      key={label}
-                      className="flex cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-border bg-foreground/[0.03] p-6 text-center transition hover:border-primary/40"
-                    >
-                      <Upload className="mb-2 h-5 w-5 text-primary" />
-                      <span className="text-sm text-foreground/80">{label}</span>
-                      <span className="mt-1 text-xs text-muted-foreground">Click to upload</span>
-                      <input type="file" className="hidden" />
-                    </label>
-                  )
-                )}
+                {["Screenshots", "Demo video", "Documentation PDF"].map((label) => (
+                  <label
+                    key={label}
+                    className="flex cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-border bg-foreground/[0.03] p-6 text-center transition hover:border-primary/40"
+                  >
+                    <Upload className="mb-2 h-5 w-5 text-primary" />
+                    <span className="text-sm text-foreground/80">{label}</span>
+                    <span className="mt-1 text-xs text-muted-foreground">Coming soon</span>
+                    <input type="file" className="hidden" disabled />
+                  </label>
+                ))}
+                <label className="flex cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-border bg-foreground/[0.03] p-6 text-center transition hover:border-primary/40">
+                  <Upload className="mb-2 h-5 w-5 text-primary" />
+                  <span className="text-sm text-foreground/80">Source code ZIP</span>
+                  <span className="mt-1 text-xs text-muted-foreground">
+                    {sourceFile ? sourceFile.name : "Required for paid delivery"}
+                  </span>
+                  <input
+                    type="file"
+                    accept=".zip,application/zip"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0] || null;
+                      setSourceFile(file);
+                      setSourcePath(null);
+                      if (file && title) {
+                        await uploadSource(file, title);
+                      }
+                    }}
+                  />
+                </label>
               </div>
+              {(uploading || uploadMsg) && (
+                <p className="text-xs text-muted-foreground">
+                  {uploading ? "Uploading source…" : uploadMsg}
+                </p>
+              )}
               <div>
                 <Label>Demo URL</Label>
                 <Input className="mt-1.5" placeholder="https://..." {...register("demoUrl")} />

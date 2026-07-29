@@ -73,3 +73,20 @@ npm run health
 ```
 
 Expect `database.ready: true`. Other services turn green once keys are pasted into `.env`.
+
+## 6. Order fulfillment & secure downloads
+
+After ClickPesa/Stripe payment succeeds, 4ward:
+
+1. Writes `Purchase` + `Transaction` (+ buyer notification) via Prisma
+2. Issues a unique `downloadToken`
+3. Serves files only from `/api/downloads/[purchaseId]?token=...` (signed Supabase URL)
+
+Sellers upload a **Source code ZIP** on `/sell` → `/api/uploads/project` → bucket `project-files`.
+
+Required for real file delivery:
+
+- `DATABASE_URL` (purchases)
+- `NEXT_PUBLIC_SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`
+- Storage bucket named **`project-files`**
+- ClickPesa (or Stripe) payment completing so fulfillment runs

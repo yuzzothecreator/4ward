@@ -82,10 +82,13 @@ function CheckoutInner() {
         if (cancelled) return;
 
         if (data.paid) {
-          addPurchase(project);
+          addPurchase(project, {
+            downloadToken: data.purchase?.downloadToken,
+            purchaseId: data.purchase?.id,
+          });
           setDone(true);
           setPolling(false);
-          setStatusMsg("Payment confirmed.");
+          setStatusMsg("Payment confirmed — purchase saved.");
           return;
         }
 

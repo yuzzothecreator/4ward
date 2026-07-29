@@ -5,12 +5,12 @@ import {
   queryPaymentStatus,
   updatePendingPayment,
 } from "@/lib/clickpesa";
+import { fulfillClickPesaOrder } from "@/lib/orders";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Poll ClickPesa payment status by orderReference.
- * GET /api/checkout/mobile-money/status?orderReference=...
+ * Poll ClickPesa payment status and fulfill purchase when paid.
  */
 export async function GET(req: Request) {
   try {
@@ -40,7 +40,7 @@ export async function GET(req: Request) {
     const latest = Array.isArray(remote.data) ? remote.data[0] : undefined;
     const status = latest?.status || pending?.status || "PROCESSING";
 
-    const updated = updatePendingPayment(orderReference, {
+    updatePendingPayment(orderReference, {
       status,
       message: latest?.message,
       channel: latest?.channel || pending?.channel,
@@ -48,6 +48,14 @@ export async function GET(req: Request) {
     });
 
     const paid = status === "SUCCESS" || status === "SETTLED";
+    let purchase = null;
+
+    if (paid) {
+      const result = await fulfillClickPesaOrder(orderReference);
+      if (result.ok) purchase = result.purchase;
+    }
+
+    const updated = getPendingPayment(orderReference);
 
     return NextResponse.json({
       orderReference,
@@ -60,6 +68,7 @@ export async function GET(req: Request) {
       slug: updated?.slug,
       title: updated?.title,
       message: latest?.message || updated?.message,
+      purchase,
     });
   } catch (err) {
     console.error("[clickpesa] status failed", err);

@@ -1,23 +1,117 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Download } from "lucide-react";
+import { Download, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { formatPrice } from "@/lib/utils";
-import { useAppStore } from "@/store/use-app-store";
+import { useAppStore, type PurchaseRecord } from "@/store/use-app-store";
 
 export default function PurchasesPage() {
-  const purchases = useAppStore((s) => s.purchases);
+  const user = useAppStore((s) => s.user);
+  const localPurchases = useAppStore((s) => s.purchases);
+  const [serverPurchases, setServerPurchases] = useState<PurchaseRecord[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    if (!user?.email) return;
+    setLoading(true);
+    fetch(`/api/purchases?email=${encodeURIComponent(user.email)}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data.purchases)) {
+          setServerPurchases(
+            data.purchases.map(
+              (p: PurchaseRecord & { downloadToken?: string }) => ({
+                id: p.id,
+                projectId: p.projectId,
+                slug: p.slug,
+                title: p.title,
+                coverImage: p.coverImage,
+                price: p.price,
+                sellerName: p.sellerName,
+                purchasedAt: p.purchasedAt,
+                downloadToken: p.downloadToken,
+              })
+            )
+          );
+        }
+      })
+      .catch(() => null)
+      .finally(() => setLoading(false));
+  }, [user?.email]);
+
+  const byProject = new Map<string, PurchaseRecord>();
+  for (const p of localPurchases) byProject.set(p.projectId, p);
+  for (const p of serverPurchases) {
+    const existing = byProject.get(p.projectId);
+    byProject.set(p.projectId, {
+      ...existing,
+      ...p,
+      downloadToken: p.downloadToken || existing?.downloadToken,
+    });
+  }
+  const purchases = Array.from(byProject.values()).sort(
+    (a, b) =>
+      new Date(b.purchasedAt).getTime() - new Date(a.purchasedAt).getTime()
+  );
+
+  async function handleDownload(p: PurchaseRecord) {
+    if (!p.downloadToken) {
+      setMessage(
+        "This purchase has no download token yet. Complete payment via ClickPesa so the order can be fulfilled."
+      );
+      return;
+    }
+    setDownloadingId(p.id);
+    setMessage("");
+    try {
+      const res = await fetch(
+        `/api/downloads/${encodeURIComponent(p.id)}?token=${encodeURIComponent(p.downloadToken)}`
+      );
+      const data = await res.json();
+      if (!res.ok) {
+        setMessage(data.error || "Download denied");
+        return;
+      }
+      if (data.url) {
+        window.open(data.url, "_blank");
+        setMessage("Secure download started.");
+      } else {
+        setMessage(
+          data.message ||
+            "Entitlement verified. Upload the source ZIP (and configure Supabase Storage) to deliver the file."
+        );
+      }
+    } catch {
+      setMessage("Download request failed");
+    } finally {
+      setDownloadingId(null);
+    }
+  }
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground">Purchased projects</h1>
-        <p className="text-muted">Download source files and documentation securely.</p>
+        <p className="text-muted">
+          Paid orders are saved to the database. Downloads require your entitlement token.
+        </p>
       </div>
 
-      {purchases.length === 0 ? (
+      {message && (
+        <p className="rounded-xl border border-border bg-card px-4 py-3 text-sm text-muted">
+          {message}
+        </p>
+      )}
+
+      {loading && purchases.length === 0 ? (
+        <p className="text-sm text-muted">Loading purchases…</p>
+      ) : purchases.length === 0 ? (
         <Card>
           <CardContent className="space-y-3 p-8 text-center">
             <p className="text-muted">No purchases yet.</p>
@@ -42,19 +136,25 @@ export default function PurchasesPage() {
                     by {p.sellerName} · {formatPrice(p.price)} ·{" "}
                     {new Date(p.purchasedAt).toLocaleDateString()}
                   </p>
+                  {p.downloadToken ? (
+                    <Badge variant="secondary" className="mt-2">
+                      Entitled
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="mt-2">
+                      Local only
+                    </Badge>
+                  )}
                 </div>
                 <Button
-                  onClick={async () => {
-                    const res = await fetch(`/api/downloads/${p.projectId}`);
-                    const data = await res.json();
-                    if (data.url) window.open(data.url, "_blank");
-                    else
-                      alert(
-                        "Demo download ready — token: " + (data.token || "ok")
-                      );
-                  }}
+                  onClick={() => handleDownload(p)}
+                  disabled={downloadingId === p.id}
                 >
-                  <Download className="h-4 w-4" />
+                  {downloadingId === p.id ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Download className="h-4 w-4" />
+                  )}
                   Download
                 </Button>
               </CardContent>

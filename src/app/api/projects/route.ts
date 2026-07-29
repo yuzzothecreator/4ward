@@ -83,6 +83,10 @@ export async function POST(req: Request) {
       technologyStack: parsed.data.technologyStack,
       demoUrl: parsed.data.demoUrl || null,
       githubRepo: parsed.data.githubRepo || null,
+      sourceFile:
+        typeof body.sourceFile === "string" && body.sourceFile
+          ? body.sourceFile
+          : `projects/${slugBase}/source.zip`,
       status: status as "DRAFT" | "PUBLISHED",
       publishedAt: status === "PUBLISHED" ? new Date() : null,
     };

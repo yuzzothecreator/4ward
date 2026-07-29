@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { stripe } from "@/lib/stripe";
-import { calculateFees } from "@/lib/stripe";
+import { stripe, calculateFees } from "@/lib/stripe";
+import { fulfillPurchase } from "@/lib/orders";
+import { demoProjects } from "@/lib/demo-data";
 
 export async function POST(req: Request) {
   const secret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -21,18 +22,38 @@ export async function POST(req: Request) {
 
     if (event.type === "checkout.session.completed") {
       const session = event.data.object;
-      // TZS is zero-decimal — amount_total is already in whole shillings
       const amount = session.amount_total || 0;
       const fees = calculateFees(amount);
+      const projectId = session.metadata?.projectId || "";
+      const project =
+        demoProjects.find((p) => p.id === projectId) ||
+        demoProjects.find((p) => p.slug === session.metadata?.slug);
 
       console.info("[audit] payment.verified", {
         sessionId: session.id,
-        projectId: session.metadata?.projectId,
+        projectId,
         amount,
         ...fees,
       });
 
-      // Persist Purchase + Transaction + AffiliateEarning via Prisma in production
+      if (project || projectId) {
+        const email =
+          session.customer_details?.email ||
+          session.customer_email ||
+          "buyer@example.com";
+
+        await fulfillPurchase({
+          buyerEmail: email,
+          buyerName: session.customer_details?.name || undefined,
+          projectId: project?.id || projectId,
+          slug: project?.slug || session.metadata?.slug || projectId,
+          title: project?.title || "4ward project",
+          amount,
+          paymentGateway: "stripe",
+          paymentReference: session.id,
+          affiliateCode: session.metadata?.affiliateCode || undefined,
+        });
+      }
     }
 
     return NextResponse.json({ received: true });

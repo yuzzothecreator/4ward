@@ -28,6 +28,7 @@ export type PurchaseRecord = {
   price: number;
   sellerName: string;
   purchasedAt: string;
+  downloadToken?: string;
 };
 
 type CartItem = {
@@ -57,13 +58,20 @@ type AppState = {
 
   addListing: (
     values: ProjectFormValues,
-    opts?: { status?: DemoProject["status"]; coverImage?: string }
+    opts?: {
+      status?: DemoProject["status"];
+      coverImage?: string;
+      sourceFile?: string;
+    }
   ) => DemoProject;
   getCatalog: () => DemoProject[];
   getProjectBySlug: (slug: string) => DemoProject | undefined;
   getMyListings: () => DemoProject[];
 
-  addPurchase: (project: DemoProject) => PurchaseRecord | null;
+  addPurchase: (
+    project: DemoProject,
+    opts?: { downloadToken?: string; purchaseId?: string }
+  ) => PurchaseRecord | null;
   hasPurchased: (projectId: string) => boolean;
 
   toggleFavorite: (projectId: string) => void;
@@ -171,6 +179,7 @@ export const useAppStore = create<AppState>()(
           images: [opts?.coverImage || DEFAULT_COVER],
           demoUrl: values.demoUrl || "",
           githubRepo: values.githubRepo || undefined,
+          sourceFile: opts?.sourceFile,
           technologyStack: values.technologyStack,
           views: 0,
           downloads: 0,
@@ -211,10 +220,26 @@ export const useAppStore = create<AppState>()(
         );
       },
 
-      addPurchase: (project) => {
-        if (get().purchases.some((p) => p.projectId === project.id)) return null;
+      addPurchase: (project, opts) => {
+        if (get().purchases.some((p) => p.projectId === project.id)) {
+          // Refresh token if a real fulfillment just completed
+          if (opts?.downloadToken) {
+            set((state) => ({
+              purchases: state.purchases.map((p) =>
+                p.projectId === project.id
+                  ? {
+                      ...p,
+                      id: opts.purchaseId || p.id,
+                      downloadToken: opts.downloadToken,
+                    }
+                  : p
+              ),
+            }));
+          }
+          return get().purchases.find((p) => p.projectId === project.id) || null;
+        }
         const record: PurchaseRecord = {
-          id: `pur_${Date.now()}`,
+          id: opts?.purchaseId || `pur_${Date.now()}`,
           projectId: project.id,
           slug: project.slug,
           title: project.title,
@@ -222,6 +247,7 @@ export const useAppStore = create<AppState>()(
           price: project.price,
           sellerName: project.seller.name,
           purchasedAt: new Date().toISOString(),
+          downloadToken: opts?.downloadToken,
         };
         set((state) => ({
           purchases: [record, ...state.purchases],

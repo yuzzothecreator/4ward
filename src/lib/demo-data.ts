@@ -13,6 +13,7 @@ export type DemoProject = {
   images: string[];
   demoUrl: string;
   githubRepo?: string;
+  sourceFile?: string;
   technologyStack: string[];
   views: number;
   downloads: number;

@@ -1,48 +1,126 @@
 import { NextResponse } from "next/server";
-import { getSignedDownloadUrl } from "@/lib/storage";
-import { demoProjects } from "@/lib/demo-data";
 import { getPrisma, pingDatabase } from "@/lib/prisma";
+import { getSignedDownloadUrl } from "@/lib/storage";
 
+export const dynamic = "force-dynamic";
+
+/**
+ * Entitlement-gated download.
+ * GET /api/downloads/[id]?token=DOWNLOAD_TOKEN
+ * `id` is the Purchase id (preferred) or legacy project id with matching token.
+ */
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const token = `dl_${id}_${Date.now()}`;
+  const token = new URL(req.url).searchParams.get("token")?.trim();
 
-  const demo = demoProjects.find((p) => p.id === id);
-  let found = Boolean(demo);
-
-  if (!found) {
-    const db = await pingDatabase();
-    if (db.ok) {
-      try {
-        const prisma = await getPrisma();
-        const project = await prisma.project.findUnique({ where: { id } });
-        found = Boolean(project);
-      } catch {
-        /* ignore */
-      }
-    }
+  if (!token) {
+    return NextResponse.json(
+      { error: "Download token required" },
+      { status: 401 }
+    );
   }
 
-  // Allow user-store ids (user_*) in demo without DB row
-  if (!found && id.startsWith("user_")) found = true;
+  const db = await pingDatabase();
 
-  if (!found) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  // Demo / offline entitlement (token issued by fulfillPurchase without DB)
+  if (!db.ok) {
+    if (!token.startsWith("demo_")) {
+      return NextResponse.json(
+        { error: "Invalid token (database offline)" },
+        { status: 401 }
+      );
+    }
+    return NextResponse.json({
+      url: null,
+      token,
+      protected: true,
+      demo: true,
+      message:
+        "Purchase verified in demo mode. Connect Supabase Storage + upload a source ZIP to enable real file delivery.",
+    });
   }
 
   try {
-    const signed = await getSignedDownloadUrl(`projects/${id}/source.zip`);
-    return NextResponse.json({
-      url: signed.url === "#" ? null : signed.url,
-      token,
-      expiresIn: signed.expiresIn,
-      protected: true,
-      demo: signed.url === "#",
+    const prisma = await getPrisma();
+
+    let purchase = await prisma.purchase.findFirst({
+      where: {
+        OR: [{ id }, { projectId: id }],
+        downloadToken: token,
+        paymentStatus: "COMPLETED",
+      },
+      include: { project: true },
     });
-  } catch {
-    return NextResponse.json({ token, protected: true, demo: true });
+
+    // Also allow lookup by token alone if id mismatches remapped project
+    if (!purchase) {
+      purchase = await prisma.purchase.findFirst({
+        where: { downloadToken: token, paymentStatus: "COMPLETED" },
+        include: { project: true },
+      });
+    }
+
+    if (!purchase) {
+      return NextResponse.json(
+        { error: "Invalid or expired download entitlement" },
+        { status: 403 }
+      );
+    }
+
+    const filePath =
+      purchase.project.sourceFile ||
+      `projects/${purchase.project.slug}/source.zip`;
+
+    await prisma.project.update({
+      where: { id: purchase.projectId },
+      data: { downloads: { increment: 1 } },
+    });
+
+    try {
+      const signed = await getSignedDownloadUrl(filePath, 3600);
+      if (signed.url === "#") {
+        return NextResponse.json({
+          url: null,
+          token: purchase.downloadToken,
+          purchaseId: purchase.id,
+          path: filePath,
+          protected: true,
+          demo: true,
+          message:
+            "Add SUPABASE_SERVICE_ROLE_KEY and upload the source file to bucket project-files.",
+        });
+      }
+
+      return NextResponse.json({
+        url: signed.url,
+        token: purchase.downloadToken,
+        purchaseId: purchase.id,
+        expiresIn: signed.expiresIn,
+        protected: true,
+        demo: false,
+      });
+    } catch (err) {
+      return NextResponse.json({
+        url: null,
+        token: purchase.downloadToken,
+        purchaseId: purchase.id,
+        path: filePath,
+        protected: true,
+        demo: true,
+        message:
+          err instanceof Error
+            ? err.message
+            : "File not found in storage — upload source ZIP when listing.",
+      });
+    }
+  } catch (err) {
+    console.error("[downloads]", err);
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Download failed" },
+      { status: 500 }
+    );
   }
 }
