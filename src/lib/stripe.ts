@@ -54,28 +54,27 @@ export async function createCheckoutSession(params: {
 }
 
 /**
- * Placeholder adapters for future African payment gateways.
+ * Legacy placeholders — prefer ClickPesa via `@/lib/clickpesa` for TZ mobile money.
  */
 export const africanPaymentGateways = {
+  clickpesa: {
+    name: "ClickPesa",
+    enabled: Boolean(
+      process.env.CLICKPESA_CLIENT_ID && process.env.CLICKPESA_API_KEY
+    ),
+  },
   mpesa: {
-    name: "M-Pesa",
-    enabled: false,
-    async initiate(_amount: number, _phone: string) {
-      throw new Error("M-Pesa integration coming soon");
-    },
+    name: "M-Pesa (via ClickPesa)",
+    enabled: Boolean(
+      process.env.CLICKPESA_CLIENT_ID && process.env.CLICKPESA_API_KEY
+    ),
   },
   azampay: {
     name: "AzamPay",
     enabled: false,
-    async initiate(_amount: number, _account: string) {
-      throw new Error("AzamPay integration coming soon");
-    },
   },
   selcom: {
     name: "Selcom",
     enabled: false,
-    async initiate(_amount: number, _phone: string) {
-      throw new Error("Selcom integration coming soon");
-    },
   },
 };

@@ -1,7 +1,7 @@
 # Backend credentials checklist
 
-4ward needs these services. Demo auth/checkout still works without Clerk/Stripe,
-but production requires all keys below.
+4ward needs these services. Demo auth/checkout still works without Clerk/ClickPesa,
+but production mobile money requires ClickPesa keys below.
 
 ## Status endpoint
 
@@ -31,7 +31,25 @@ Schema tables (`User`, `Project`, `Purchase`, …) are applied on the linked DB.
 4. In Clerk, set sign-in/up URLs to `/sign-in` and `/sign-up`
 5. Restart `npm run dev`
 
-## 3. Stripe (payments)
+## 3. ClickPesa (mobile money — primary)
+
+1. Register / log in at [ClickPesa Merchant](https://merchant.clickpesa.com)
+2. Complete company + KYC setup
+3. **Settings → Developers → Applications** → create an **API** app
+4. Enable **Collection** (USSD Push) for mobile money (M-Pesa, Mixx, Airtel, HaloPesa)
+5. Copy credentials into `.env`:
+   - `CLICKPESA_CLIENT_ID=`
+   - `CLICKPESA_API_KEY=`
+   - `CLICKPESA_CHECKSUM_KEY=` (only if checksum is enabled on the app)
+6. Application webhooks (same screen):
+   - `PAYMENT RECEIVED` → `{NEXT_PUBLIC_APP_URL}/api/webhooks/clickpesa`
+   - `PAYMENT FAILED` → same URL
+7. For local testing, expose the webhook with a tunnel (ngrok / Cloudflare) or rely on status polling
+8. Restart `npm run dev` and confirm `clickpesa.ready: true` on `/api/health`
+
+Checkout flow: buyer enters phone → USSD push → approve on phone → purchase unlocks.
+
+## 4. Stripe (optional card payments)
 
 1. [Stripe test keys](https://dashboard.stripe.com/test/apikeys)
 2. `STRIPE_SECRET_KEY=sk_test_...`
@@ -40,7 +58,7 @@ Schema tables (`User`, `Project`, `Purchase`, …) are applied on the linked DB.
    → paste signing secret into `STRIPE_WEBHOOK_SECRET`
 5. Currency is **TZS** (whole shillings)
 
-## 4. Supabase Storage (file uploads)
+## 5. Supabase Storage (file uploads)
 
 1. [API settings](https://supabase.com/dashboard/project/_/settings/api)
 2. `NEXT_PUBLIC_SUPABASE_URL` (already set from project ref)

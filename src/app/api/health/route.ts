@@ -3,6 +3,7 @@ import { getEnvConfig } from "@/lib/env";
 import { pingDatabase } from "@/lib/prisma";
 import { stripe } from "@/lib/stripe";
 import { supabaseAdmin } from "@/lib/storage";
+import { pingClickPesa } from "@/lib/clickpesa";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,14 @@ export async function GET() {
     } catch (err) {
       stripeError = err instanceof Error ? err.message : "Stripe ping failed";
     }
+  }
+
+  let clickpesaOk = false;
+  let clickpesaError: string | undefined;
+  if (env.clickpesaEnabled) {
+    const ping = await pingClickPesa();
+    clickpesaOk = ping.ok;
+    clickpesaError = ping.error;
   }
 
   let storageOk = false;
@@ -52,6 +61,15 @@ export async function GET() {
           ? "Missing CLERK_SECRET_KEY"
           : "Not configured — demo auth active",
     },
+    clickpesa: {
+      configured: env.clickpesaEnabled,
+      ready: clickpesaOk,
+      message: clickpesaOk
+        ? "API token OK — mobile money USSD push ready"
+        : env.clickpesaEnabled
+          ? clickpesaError || "Keys present but auth failed"
+          : "Not configured — add CLICKPESA_CLIENT_ID + CLICKPESA_API_KEY",
+    },
     stripe: {
       configured: env.stripeEnabled,
       ready: stripeOk,
@@ -59,7 +77,7 @@ export async function GET() {
         ? "API key valid"
         : env.stripeEnabled
           ? stripeError || "Key present but invalid"
-          : "Not configured — demo checkout active",
+          : "Optional card payments",
     },
     supabaseStorage: {
       configured: env.supabaseConfigured,
@@ -87,8 +105,10 @@ export async function GET() {
           "Fix DATABASE_URL — use Supabase Session pooler (IPv4) if direct host fails",
         !services.clerk.ready &&
           "Add NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY + CLERK_SECRET_KEY from Clerk dashboard",
+        !services.clickpesa.ready &&
+          "Add CLICKPESA_CLIENT_ID + CLICKPESA_API_KEY from merchant.clickpesa.com → Developers",
         !services.stripe.ready &&
-          "Add STRIPE_SECRET_KEY + NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY (test mode)",
+          "Optional: Add STRIPE_SECRET_KEY for card checkout",
         !services.supabaseStorage.ready &&
           "Add NEXT_PUBLIC_SUPABASE_ANON_KEY + SUPABASE_SERVICE_ROLE_KEY; create bucket project-files",
       ].filter(Boolean),

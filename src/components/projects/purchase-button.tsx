@@ -37,23 +37,9 @@ export function PurchaseButton({ project }: { project: DemoProject }) {
       coverImage: project.coverImage,
     });
 
-    try {
-      const res = await fetch("/api/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectId: project.id, slug: project.slug }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (data.url) {
-        window.location.href = data.url;
-        return;
-      }
-      router.push(`/checkout?project=${project.slug}&demo=1`);
-    } catch {
-      router.push(`/checkout?project=${project.slug}&demo=1`);
-    } finally {
-      setLoading(false);
-    }
+    // Paid projects go to checkout (ClickPesa mobile money / Stripe / demo)
+    router.push(`/checkout?project=${project.slug}`);
+    setLoading(false);
   }
 
   if (owned) {
