@@ -49,15 +49,29 @@ Schema tables (`User`, `Project`, `Purchase`, …) are applied on the linked DB.
 
 Checkout flow: buyer enters phone → USSD push → approve on phone → purchase unlocks.
 
-## 3b. Admin user management (real data)
+## 3b. Admin user management (real data + security)
 
 Sign in as `admin@4ward.com` (demo) or a DB user with role `ADMIN`.
 
-- `/dashboard/admin` — live counts (users, GMV, pending listings)
-- `/dashboard/admin/users` — search/filter users; edit name, university, role, approval
-- APIs: `GET/PATCH/POST /api/admin/users`, `GET /api/admin/stats`, `PATCH /api/admin/projects`
+On sign-in, the app requests a **signed admin session token** (`POST /api/admin/session`).
+Admin APIs reject requests that only spoof `x-admin-email`.
 
-All admin writes go to Postgres (`User` / `Project` tables).
+Protections:
+
+- Signed HMAC admin tokens (2h expiry)
+- Same-origin check on mutating admin requests
+- Rate limiting on admin endpoints
+- Input sanitization on profile fields
+- Cannot demote the last admin
+- Client cannot escalate role via sync payload
+- Security headers (`X-Frame-Options`, `nosniff`, …)
+- `AuditLog` rows for admin actions
+
+Set `ADMIN_SESSION_SECRET` in `.env` for production.
+
+- `/dashboard/admin` — live counts, recent purchases/users, audit log
+- `/dashboard/admin/users` — search/edit roles/approvals
+- APIs: `/api/admin/session`, `/api/admin/users`, `/api/admin/stats`, `/api/admin/projects`
 
 ## 4. Stripe (optional card payments)
 

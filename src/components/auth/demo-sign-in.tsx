@@ -29,9 +29,21 @@ function DemoSignInForm() {
     }
 
     setLoading(true);
-    const user = signIn({ email });
-    const next = searchParams.get("next") || defaultRedirectForRole(user.role);
-    router.push(next);
+    try {
+      const user = signIn({ email });
+      if (user.role === "ADMIN") {
+        const { ensureAdminSession } = await import("@/lib/admin-session");
+        await ensureAdminSession(user);
+      } else {
+        const { clearAdminToken } = await import("@/lib/admin-session");
+        clearAdminToken();
+      }
+      const next = searchParams.get("next") || defaultRedirectForRole(user.role);
+      router.push(next);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Sign in failed");
+      setLoading(false);
+    }
   }
 
   return (

@@ -2,25 +2,60 @@ import { NextResponse } from "next/server";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { DEMO_ADMIN_EMAIL, type AppRole, normalizeRole } from "@/lib/rbac";
 import { getPrisma, pingDatabase } from "@/lib/prisma";
+import {
+  clientIp,
+  requireRateLimit,
+  requireSameOrigin,
+  verifyAdminSessionToken,
+  jsonSecure,
+} from "@/lib/security";
 
 const clerkEnabled = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
 
 export type AdminGate =
-  | { ok: true; role: "ADMIN"; demo: boolean; actorEmail: string }
+  | {
+      ok: true;
+      role: "ADMIN";
+      demo: boolean;
+      actorEmail: string;
+      actorUserId?: string;
+      ip: string;
+    }
   | { ok: false; response: NextResponse };
 
+function tokenFrom(req: Request) {
+  return (
+    req.headers.get("x-admin-token") ||
+    req.headers.get("authorization") ||
+    ""
+  );
+}
+
 /**
- * Admin-only gate for API routes.
- * Clerk: publicMetadata.role === ADMIN
- * Demo: actor must be DEMO_ADMIN_EMAIL or a DB user with role ADMIN
+ * Hardened admin gate:
+ * - Rate limit
+ * - Same-origin on mutations
+ * - Clerk ADMIN role OR signed admin session token (not spoofable email alone)
  */
-export async function requireAdminActor(actorEmail?: string | null): Promise<AdminGate> {
+export async function requireAdminActor(
+  req: Request,
+  opts?: { mutate?: boolean }
+): Promise<AdminGate> {
+  const ip = clientIp(req);
+  const limited = requireRateLimit(req, "admin", opts?.mutate ? 30 : 60, 60_000);
+  if (limited) return { ok: false, response: limited };
+
+  if (opts?.mutate) {
+    const originBlock = requireSameOrigin(req);
+    if (originBlock) return { ok: false, response: originBlock };
+  }
+
   if (clerkEnabled) {
     const { userId } = await auth();
     if (!userId) {
       return {
         ok: false,
-        response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
+        response: jsonSecure({ error: "Unauthorized" }, { status: 401 }),
       };
     }
     const user = await currentUser();
@@ -28,52 +63,122 @@ export async function requireAdminActor(actorEmail?: string | null): Promise<Adm
     if (role !== "ADMIN") {
       return {
         ok: false,
-        response: NextResponse.json({ error: "Admin access required" }, { status: 403 }),
+        response: jsonSecure({ error: "Admin access required" }, { status: 403 }),
       };
     }
     const email =
       user?.primaryEmailAddress?.emailAddress ||
       user?.emailAddresses?.[0]?.emailAddress ||
-      actorEmail ||
       "";
-    return { ok: true, role: "ADMIN", demo: false, actorEmail: email };
+    return {
+      ok: true,
+      role: "ADMIN",
+      demo: false,
+      actorEmail: email.toLowerCase(),
+      actorUserId: undefined,
+      ip,
+    };
   }
 
-  const email = (actorEmail || "").trim().toLowerCase();
-  if (!email) {
+  const verified = verifyAdminSessionToken(tokenFrom(req));
+  if (!verified.ok || !verified.email) {
     return {
       ok: false,
-      response: NextResponse.json(
-        { error: "Admin email required (sign in as admin)" },
+      response: jsonSecure(
+        {
+          error: verified.error || "Admin session required",
+          hint: "POST /api/admin/session after signing in as admin",
+        },
         { status: 401 }
       ),
     };
   }
 
+  const email = verified.email;
+
+  // Token alone is not enough — email must still be an admin in DB (or demo admin)
   if (email === DEMO_ADMIN_EMAIL) {
-    return { ok: true, role: "ADMIN", demo: true, actorEmail: email };
+    const db = await pingDatabase();
+    let actorUserId: string | undefined;
+    if (db.ok) {
+      try {
+        const prisma = await getPrisma();
+        const row = await prisma.user.findUnique({ where: { email } });
+        actorUserId = row?.id;
+      } catch {
+        /* ignore */
+      }
+    }
+    return {
+      ok: true,
+      role: "ADMIN",
+      demo: true,
+      actorEmail: email,
+      actorUserId,
+      ip,
+    };
   }
 
   const db = await pingDatabase();
-  if (db.ok) {
-    try {
-      const prisma = await getPrisma();
-      const row = await prisma.user.findUnique({ where: { email } });
-      if (row?.role === "ADMIN") {
-        return { ok: true, role: "ADMIN", demo: false, actorEmail: email };
-      }
-    } catch {
-      /* fall through */
+  if (!db.ok) {
+    return {
+      ok: false,
+      response: jsonSecure({ error: "Database unavailable" }, { status: 503 }),
+    };
+  }
+
+  try {
+    const prisma = await getPrisma();
+    const row = await prisma.user.findUnique({ where: { email } });
+    if (row?.role === "ADMIN") {
+      return {
+        ok: true,
+        role: "ADMIN",
+        demo: false,
+        actorEmail: email,
+        actorUserId: row.id,
+        ip,
+      };
     }
+  } catch {
+    /* fall through */
   }
 
   return {
     ok: false,
-    response: NextResponse.json({ error: "Admin access required" }, { status: 403 }),
+    response: jsonSecure({ error: "Admin access required" }, { status: 403 }),
   };
 }
 
-/** Ensure demo admin + optional session user exist in Postgres. */
+/** Persist security-relevant admin actions. */
+export async function writeAdminAudit(opts: {
+  userId?: string | null;
+  action: string;
+  entity?: string;
+  entityId?: string;
+  metadata?: Record<string, unknown>;
+  ipAddress?: string;
+}) {
+  try {
+    const db = await pingDatabase();
+    if (!db.ok) return;
+    const prisma = await getPrisma();
+    await prisma.auditLog.create({
+      data: {
+        userId: opts.userId || null,
+        action: opts.action,
+        entity: opts.entity,
+        entityId: opts.entityId,
+        metadata: (opts.metadata || undefined) as object | undefined,
+        ipAddress: opts.ipAddress,
+      },
+    });
+  } catch (err) {
+    console.warn("[audit.write.failed]", err);
+  }
+}
+
+/** Ensure demo admin exists. Never escalate arbitrary session roles from the client. */
 export async function ensureAdminUsersSynced(opts: {
   actorEmail: string;
   sessionUser?: {
@@ -81,7 +186,6 @@ export async function ensureAdminUsersSynced(opts: {
     email: string;
     username?: string;
     university?: string;
-    role?: AppRole;
   } | null;
 }) {
   const db = await pingDatabase();
@@ -105,6 +209,8 @@ export async function ensureAdminUsersSynced(opts: {
 
   if (opts.sessionUser?.email) {
     const email = opts.sessionUser.email.trim().toLowerCase();
+    // Security: only the verified demo admin email gets ADMIN from sync.
+    // Other users keep their existing DB role (no client-side privilege escalation).
     const usernameBase =
       (opts.sessionUser.username ||
         email.split("@")[0]?.replace(/[^a-z0-9_-]/gi, "") ||
@@ -118,11 +224,9 @@ export async function ensureAdminUsersSynced(opts: {
         data: {
           name: opts.sessionUser.name || undefined,
           university: opts.sessionUser.university || undefined,
-          role:
-            email === DEMO_ADMIN_EMAIL
-              ? "ADMIN"
-              : opts.sessionUser.role || undefined,
-          isApproved: true,
+          ...(email === DEMO_ADMIN_EMAIL
+            ? { role: "ADMIN" as AppRole, isApproved: true }
+            : {}),
         },
       });
     } else {
@@ -136,9 +240,9 @@ export async function ensureAdminUsersSynced(opts: {
           name: opts.sessionUser.name || email.split("@")[0] || "User",
           email,
           username,
-          role: email === DEMO_ADMIN_EMAIL ? "ADMIN" : opts.sessionUser.role || "BUYER",
+          role: email === DEMO_ADMIN_EMAIL ? "ADMIN" : "BUYER",
           university: opts.sessionUser.university || "University of Dar es Salaam",
-          isApproved: true,
+          isApproved: email === DEMO_ADMIN_EMAIL,
         },
       });
     }

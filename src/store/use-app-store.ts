@@ -133,7 +133,17 @@ export const useAppStore = create<AppState>()(
         return user;
       },
 
-      signOut: () => set({ user: null }),
+      signOut: () => {
+        if (typeof window !== "undefined") {
+          try {
+            sessionStorage.removeItem("4ward_admin_token");
+            sessionStorage.removeItem("4ward_admin_token_exp");
+          } catch {
+            /* ignore */
+          }
+        }
+        set({ user: null });
+      },
 
       setRole: (role) => {
         const user = get().user;

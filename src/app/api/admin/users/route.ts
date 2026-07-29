@@ -1,58 +1,41 @@
-import { NextResponse } from "next/server";
 import { getPrisma, pingDatabase } from "@/lib/prisma";
 import {
   ensureAdminUsersSynced,
   requireAdminActor,
+  writeAdminAudit,
 } from "@/lib/admin-auth";
 import { isAppRole, type AppRole } from "@/lib/rbac";
+import { jsonSecure, sanitizeText } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
 
-function actorFrom(req: Request, body?: { actorEmail?: string }) {
-  const url = new URL(req.url);
-  return (
-    body?.actorEmail ||
-    req.headers.get("x-admin-email") ||
-    url.searchParams.get("actorEmail") ||
-    ""
-  );
-}
-
 /**
- * GET /api/admin/users?actorEmail=
- * Lists real users from Postgres with project/purchase counts.
+ * GET /api/admin/users
+ * Requires signed admin session (x-admin-token) or Clerk ADMIN.
  */
 export async function GET(req: Request) {
-  const actorEmail = actorFrom(req);
-  const gate = await requireAdminActor(actorEmail);
+  const gate = await requireAdminActor(req);
   if (!gate.ok) return gate.response;
 
   const db = await pingDatabase();
   if (!db.ok) {
-    return NextResponse.json(
-      {
-        users: [],
-        demo: true,
-        error: db.error || "Database unavailable",
-      },
+    return jsonSecure(
+      { users: [], demo: true, error: db.error || "Database unavailable" },
       { status: 503 }
     );
   }
 
   try {
-    const sessionName = new URL(req.url).searchParams.get("sessionName");
-    const sessionUniversity = new URL(req.url).searchParams.get("sessionUniversity");
-    const sessionUsername = new URL(req.url).searchParams.get("sessionUsername");
-    const sessionRole = new URL(req.url).searchParams.get("sessionRole");
-
+    const url = new URL(req.url);
     await ensureAdminUsersSynced({
       actorEmail: gate.actorEmail,
       sessionUser: {
-        name: sessionName || "Admin",
+        name: sanitizeText(url.searchParams.get("sessionName") || "Admin", 80),
         email: gate.actorEmail,
-        username: sessionUsername || undefined,
-        university: sessionUniversity || undefined,
-        role: isAppRole(sessionRole) ? sessionRole : "ADMIN",
+        username: sanitizeText(url.searchParams.get("sessionUsername") || "", 40) || undefined,
+        university:
+          sanitizeText(url.searchParams.get("sessionUniversity") || "", 120) ||
+          undefined,
       },
     });
 
@@ -72,16 +55,12 @@ export async function GET(req: Request) {
         createdAt: true,
         updatedAt: true,
         _count: {
-          select: {
-            projects: true,
-            purchases: true,
-            reviews: true,
-          },
+          select: { projects: true, purchases: true, reviews: true },
         },
       },
     });
 
-    return NextResponse.json({
+    return jsonSecure({
       users: users.map((u) => ({
         id: u.id,
         name: u.name,
@@ -104,7 +83,7 @@ export async function GET(req: Request) {
     });
   } catch (err) {
     console.error("[admin.users.list]", err);
-    return NextResponse.json(
+    return jsonSecure(
       {
         error: err instanceof Error ? err.message : "Failed to list users",
         users: [],
@@ -114,26 +93,20 @@ export async function GET(req: Request) {
   }
 }
 
-/**
- * PATCH /api/admin/users
- * Update role, approval, name, university, bio for a real user.
- * Body: { actorEmail, userId, role?, isApproved?, name?, university?, bio? }
- */
 export async function PATCH(req: Request) {
+  const gate = await requireAdminActor(req, { mutate: true });
+  if (!gate.ok) return gate.response;
+
   try {
     const body = await req.json();
-    const actorEmail = actorFrom(req, body);
-    const gate = await requireAdminActor(actorEmail);
-    if (!gate.ok) return gate.response;
-
     const userId = typeof body.userId === "string" ? body.userId : "";
     if (!userId) {
-      return NextResponse.json({ error: "userId is required" }, { status: 400 });
+      return jsonSecure({ error: "userId is required" }, { status: 400 });
     }
 
     const db = await pingDatabase();
     if (!db.ok) {
-      return NextResponse.json(
+      return jsonSecure(
         { error: "Database unavailable — cannot persist user changes" },
         { status: 503 }
       );
@@ -149,30 +122,31 @@ export async function PATCH(req: Request) {
 
     if (body.role !== undefined) {
       if (!isAppRole(body.role)) {
-        return NextResponse.json({ error: "Invalid role" }, { status: 400 });
+        return jsonSecure({ error: "Invalid role" }, { status: 400 });
       }
       data.role = body.role;
     }
     if (typeof body.isApproved === "boolean") data.isApproved = body.isApproved;
-    if (typeof body.name === "string" && body.name.trim()) data.name = body.name.trim();
+    if (typeof body.name === "string" && body.name.trim()) {
+      data.name = sanitizeText(body.name, 80);
+    }
     if (typeof body.university === "string") {
-      data.university = body.university.trim() || null;
+      data.university = sanitizeText(body.university, 120) || null;
     }
     if (typeof body.bio === "string") {
-      data.bio = body.bio.trim() || null;
+      data.bio = sanitizeText(body.bio, 500) || null;
     }
 
     if (Object.keys(data).length === 0) {
-      return NextResponse.json({ error: "No changes provided" }, { status: 400 });
+      return jsonSecure({ error: "No changes provided" }, { status: 400 });
     }
 
     const prisma = await getPrisma();
     const existing = await prisma.user.findUnique({ where: { id: userId } });
     if (!existing) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      return jsonSecure({ error: "User not found" }, { status: 404 });
     }
 
-    // Prevent locking yourself out of admin accidentally without another admin
     if (
       existing.email.toLowerCase() === gate.actorEmail.toLowerCase() &&
       data.role &&
@@ -182,7 +156,7 @@ export async function PATCH(req: Request) {
         where: { role: "ADMIN", id: { not: userId } },
       });
       if (otherAdmins === 0) {
-        return NextResponse.json(
+        return jsonSecure(
           { error: "Cannot demote the only admin account" },
           { status: 400 }
         );
@@ -205,13 +179,16 @@ export async function PATCH(req: Request) {
       },
     });
 
-    console.info("[audit] admin.user.update", {
-      by: gate.actorEmail,
-      userId,
-      changes: data,
+    await writeAdminAudit({
+      userId: gate.actorUserId,
+      action: "admin.user.update",
+      entity: "User",
+      entityId: userId,
+      metadata: { changes: data, targetEmail: existing.email },
+      ipAddress: gate.ip,
     });
 
-    return NextResponse.json({
+    return jsonSecure({
       success: true,
       user: {
         ...updated,
@@ -223,46 +200,48 @@ export async function PATCH(req: Request) {
     });
   } catch (err) {
     console.error("[admin.users.patch]", err);
-    return NextResponse.json(
+    return jsonSecure(
       { error: err instanceof Error ? err.message : "Update failed" },
       { status: 500 }
     );
   }
 }
 
-/**
- * POST /api/admin/users — sync session user into DB (admin only).
- * Body: { actorEmail, user: { name, email, username?, university?, role? } }
- */
 export async function POST(req: Request) {
+  const gate = await requireAdminActor(req, { mutate: true });
+  if (!gate.ok) return gate.response;
+
   try {
     const body = await req.json();
-    const gate = await requireAdminActor(actorFrom(req, body));
-    if (!gate.ok) return gate.response;
-
     const result = await ensureAdminUsersSynced({
       actorEmail: gate.actorEmail,
       sessionUser: body.user
         ? {
-            name: String(body.user.name || ""),
-            email: String(body.user.email || gate.actorEmail),
-            username: body.user.username,
-            university: body.user.university,
-            role: isAppRole(body.user.role) ? body.user.role : undefined,
+            name: sanitizeText(body.user.name || "Admin", 80),
+            email: gate.actorEmail,
+            username: sanitizeText(body.user.username || "", 40) || undefined,
+            university: sanitizeText(body.user.university || "", 120) || undefined,
           }
-        : { name: "Admin", email: gate.actorEmail, role: "ADMIN" },
+        : { name: "Admin", email: gate.actorEmail },
     });
 
     if (!result.synced) {
-      return NextResponse.json(
+      return jsonSecure(
         { error: result.error || "Database unavailable" },
         { status: 503 }
       );
     }
 
-    return NextResponse.json({ success: true, synced: true });
+    await writeAdminAudit({
+      userId: gate.actorUserId,
+      action: "admin.user.sync",
+      entity: "User",
+      ipAddress: gate.ip,
+    });
+
+    return jsonSecure({ success: true, synced: true });
   } catch (err) {
-    return NextResponse.json(
+    return jsonSecure(
       { error: err instanceof Error ? err.message : "Sync failed" },
       { status: 500 }
     );

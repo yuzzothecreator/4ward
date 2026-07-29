@@ -13,16 +13,29 @@ const isProtectedRoute = createRouteMatcher([
   "/api/admin(.*)",
 ]);
 
+function withSecurityHeaders(res: NextResponse) {
+  res.headers.set("X-Content-Type-Options", "nosniff");
+  res.headers.set("X-Frame-Options", "DENY");
+  res.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.headers.set(
+    "Permissions-Policy",
+    "camera=(), microphone=(), geolocation=()"
+  );
+  res.headers.set("X-XSS-Protection", "0");
+  return res;
+}
+
 const clerkHandler = clerkMiddleware(async (auth, req) => {
   if (isProtectedRoute(req)) {
     await auth.protect();
   }
+  return withSecurityHeaders(NextResponse.next());
 });
 
 export default clerkEnabled
   ? clerkHandler
   : function middleware() {
-      return NextResponse.next();
+      return withSecurityHeaders(NextResponse.next());
     };
 
 export const config = {

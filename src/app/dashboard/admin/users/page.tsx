@@ -14,6 +14,7 @@ import {
   ROLE_LABELS,
   DEMO_ADMIN_EMAIL,
 } from "@/lib/rbac";
+import { adminHeaders, ensureAdminSession } from "@/lib/admin-session";
 
 type ManagedUser = {
   id: string;
@@ -61,15 +62,14 @@ export default function AdminUsersPage() {
     setLoading(true);
     setError("");
     try {
+      await ensureAdminSession(current!);
       const params = new URLSearchParams({
-        actorEmail,
         sessionName: current?.name || "Admin",
         sessionUniversity: current?.university || "",
         sessionUsername: current?.username || "",
-        sessionRole: current?.role || "ADMIN",
       });
       const res = await fetch(`/api/admin/users?${params}`, {
-        headers: { "x-admin-email": actorEmail },
+        headers: adminHeaders(),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -84,12 +84,12 @@ export default function AdminUsersPage() {
           ? `Loaded ${data.total} user${data.total === 1 ? "" : "s"} from the database.`
           : "No users in the database yet."
       );
-    } catch {
-      setError("Network error loading users");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Network error loading users");
     } finally {
       setLoading(false);
     }
-  }, [actorEmail, current?.name, current?.university, current?.username, current?.role]);
+  }, [actorEmail, current]);
 
   useEffect(() => {
     loadUsers();
@@ -126,12 +126,10 @@ export default function AdminUsersPage() {
     try {
       const res = await fetch("/api/admin/users", {
         method: "PATCH",
-        headers: {
+        headers: adminHeaders({
           "Content-Type": "application/json",
-          "x-admin-email": actorEmail,
-        },
+        }),
         body: JSON.stringify({
-          actorEmail,
           userId: u.id,
           name: editDraft.name,
           university: editDraft.university,
@@ -176,12 +174,10 @@ export default function AdminUsersPage() {
     try {
       const res = await fetch("/api/admin/users", {
         method: "PATCH",
-        headers: {
+        headers: adminHeaders({
           "Content-Type": "application/json",
-          "x-admin-email": actorEmail,
-        },
+        }),
         body: JSON.stringify({
-          actorEmail,
           userId: u.id,
           isApproved: approved,
           role: approved && u.role === "BUYER" ? "SELLER" : u.role,

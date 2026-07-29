@@ -1,28 +1,24 @@
-import { NextResponse } from "next/server";
 import { getPrisma, pingDatabase } from "@/lib/prisma";
-import { requireAdminActor } from "@/lib/admin-auth";
+import { requireAdminActor, writeAdminAudit } from "@/lib/admin-auth";
+import { jsonSecure, sanitizeText } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
 
 /**
  * Approve or reject a project listing.
- * PATCH { actorEmail, projectId, status: APPROVED|PUBLISHED|REJECTED, rejectionReason? }
+ * PATCH { projectId, status, rejectionReason? }
  */
 export async function PATCH(req: Request) {
+  const gate = await requireAdminActor(req, { mutate: true });
+  if (!gate.ok) return gate.response;
+
   try {
     const body = await req.json();
-    const actorEmail =
-      body.actorEmail ||
-      req.headers.get("x-admin-email") ||
-      "";
-    const gate = await requireAdminActor(actorEmail);
-    if (!gate.ok) return gate.response;
-
     const projectId = typeof body.projectId === "string" ? body.projectId : "";
     const status = body.status as string;
     const allowed = ["APPROVED", "PUBLISHED", "REJECTED", "PENDING_REVIEW"];
     if (!projectId || !allowed.includes(status)) {
-      return NextResponse.json(
+      return jsonSecure(
         { error: "projectId and valid status required" },
         { status: 400 }
       );
@@ -30,7 +26,7 @@ export async function PATCH(req: Request) {
 
     const db = await pingDatabase();
     if (!db.ok) {
-      return NextResponse.json({ error: "Database unavailable" }, { status: 503 });
+      return jsonSecure({ error: "Database unavailable" }, { status: 503 });
     }
 
     const prisma = await getPrisma();
@@ -40,7 +36,7 @@ export async function PATCH(req: Request) {
         status: status as "APPROVED" | "PUBLISHED" | "REJECTED" | "PENDING_REVIEW",
         rejectionReason:
           status === "REJECTED"
-            ? String(body.rejectionReason || "Rejected by admin")
+            ? sanitizeText(body.rejectionReason || "Rejected by admin", 300)
             : null,
         publishedAt:
           status === "PUBLISHED" || status === "APPROVED" ? new Date() : undefined,
@@ -48,7 +44,6 @@ export async function PATCH(req: Request) {
       include: { seller: { select: { name: true, email: true } } },
     });
 
-    // Approving a listing also marks the seller approved
     if (status === "APPROVED" || status === "PUBLISHED") {
       await prisma.user.update({
         where: { id: project.sellerId },
@@ -56,13 +51,16 @@ export async function PATCH(req: Request) {
       });
     }
 
-    console.info("[audit] admin.project.moderate", {
-      by: gate.actorEmail,
-      projectId,
-      status,
+    await writeAdminAudit({
+      userId: gate.actorUserId,
+      action: "admin.project.moderate",
+      entity: "Project",
+      entityId: projectId,
+      metadata: { status, title: project.title },
+      ipAddress: gate.ip,
     });
 
-    return NextResponse.json({
+    return jsonSecure({
       success: true,
       project: {
         id: project.id,
@@ -72,7 +70,7 @@ export async function PATCH(req: Request) {
       },
     });
   } catch (err) {
-    return NextResponse.json(
+    return jsonSecure(
       { error: err instanceof Error ? err.message : "Moderation failed" },
       { status: 500 }
     );
