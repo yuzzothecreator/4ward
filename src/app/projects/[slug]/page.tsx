@@ -12,6 +12,7 @@ import { formatPrice, categoryLabel, formatNumber } from "@/lib/utils";
 import { ProjectCard } from "@/components/projects/project-card";
 import { PurchaseButton } from "@/components/projects/purchase-button";
 import { ProjectReviews } from "@/components/projects/project-reviews";
+import { VerifiedTick } from "@/components/verified-tick";
 import { useAppStore } from "@/store/use-app-store";
 
 export default function ProjectDetailPage() {
@@ -163,7 +164,12 @@ export default function ProjectDetailPage() {
                     className="rounded-full"
                   />
                   <div>
-                    <p className="font-medium text-foreground">{project.seller.name}</p>
+                    <p className="flex items-center gap-1 font-medium text-foreground">
+                      {project.seller.name}
+                      {project.seller.badges?.includes("VERIFIED_CREATOR") ? (
+                        <VerifiedTick />
+                      ) : null}
+                    </p>
                     <p className="flex items-center gap-1 text-xs text-muted-foreground">
                       <GraduationCap className="h-3 w-3" />
                       {project.seller.university}

@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { formatPrice, categoryLabel } from "@/lib/utils";
 import { useAppStore } from "@/store/use-app-store";
 import { easeOutExpo } from "@/lib/motion";
+import { VerifiedTick } from "@/components/verified-tick";
 import type { DemoProject } from "@/lib/demo-data";
 
 /** Quiet product tile — Linear hairline border, used across catalog surfaces */
@@ -55,8 +56,14 @@ export function ProjectCard({ project, index = 0 }: { project: DemoProject; inde
               {formatPrice(project.price)}
             </span>
           </div>
-          <p className="truncate text-[13px] text-muted">
-            {project.seller.name} · {project.seller.university}
+          <p className="flex items-center gap-1 truncate text-[13px] text-muted">
+            <span className="truncate">
+              {project.seller.name}
+              {project.seller.badges?.includes("VERIFIED_CREATOR") ? (
+                <VerifiedTick className="ml-1 inline-block align-text-bottom" />
+              ) : null}
+            </span>
+            <span className="shrink-0"> · {project.seller.university}</span>
           </p>
           <div className="flex items-center justify-between gap-2">
             <Badge variant="outline" className="font-normal">

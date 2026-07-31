@@ -10,6 +10,7 @@ import {
   Package,
   ShoppingBag,
   UserRound,
+  BadgeCheck,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -34,6 +35,7 @@ export type UserMenuProfile = {
 const menuLinks = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/dashboard/profile", label: "Profile", icon: UserRound },
+  { href: "/dashboard/verification", label: "Get verified", icon: BadgeCheck },
   { href: "/dashboard/purchases", label: "Purchases", icon: ShoppingBag },
   { href: "/dashboard/wishlist", label: "Wishlist", icon: Heart },
   { href: "/dashboard/projects", label: "My projects", icon: Package },

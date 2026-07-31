@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { VerifiedTick } from "@/components/verified-tick";
 import { useAppStore } from "@/store/use-app-store";
 import { ROLE_LABELS } from "@/lib/rbac";
 
@@ -16,6 +18,23 @@ export default function ProfilePage() {
   const [skills, setSkills] = useState(["Next.js", "TypeScript", "Node.js"]);
   const [skillInput, setSkillInput] = useState("");
   const [saved, setSaved] = useState(false);
+  const [verified, setVerified] = useState(false);
+
+  useEffect(() => {
+    if (!user?.email) return;
+    let cancelled = false;
+    void fetch(`/api/verification?email=${encodeURIComponent(user.email)}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (!cancelled) setVerified(Boolean(data.verified));
+      })
+      .catch(() => {
+        if (!cancelled) setVerified(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.email]);
 
   if (!user) {
     return (
@@ -45,14 +64,29 @@ export default function ProfilePage() {
               </AvatarFallback>
             </Avatar>
             <div>
-              <CardTitle>{user.name}</CardTitle>
+              <CardTitle className="flex items-center gap-1.5">
+                {user.name}
+                {verified ? <VerifiedTick /> : null}
+              </CardTitle>
               <p className="text-sm text-muted-foreground">{user.email}</p>
               <p className="text-sm text-muted-foreground">
                 4ward.com/{user.username}
               </p>
-              <Badge className="mt-2" variant="secondary">
-                {ROLE_LABELS[user.role]}
-              </Badge>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <Badge variant="secondary">{ROLE_LABELS[user.role]}</Badge>
+                {verified ? (
+                  <Badge variant="neon">Verified seller</Badge>
+                ) : (
+                  <Link href="/dashboard/verification">
+                    <Badge
+                      variant="outline"
+                      className="cursor-pointer hover:border-sky-500 hover:text-sky-500"
+                    >
+                      Get blue tick
+                    </Badge>
+                  </Link>
+                )}
+              </div>
             </div>
           </div>
         </CardHeader>
@@ -75,13 +109,9 @@ export default function ProfilePage() {
           </div>
           <div>
             <Label>Role</Label>
-            <Input
-              className="mt-1.5"
-              value={ROLE_LABELS[user.role]}
-              readOnly
-            />
+            <Input className="mt-1.5" value={ROLE_LABELS[user.role]} readOnly />
             <p className="mt-1 text-xs text-muted-foreground">
-              Buyers can sell anytime (promoted to Seller). Admins manage roles under Admin → Users.
+              Buyers can sell anytime. Admins approve blue ticks under Admin → Blue ticks.
             </p>
           </div>
           <div>
@@ -92,7 +122,12 @@ export default function ProfilePage() {
             <Label>Skills</Label>
             <div className="mt-2 flex flex-wrap gap-2">
               {skills.map((s) => (
-                <Badge key={s} variant="secondary" className="cursor-pointer" onClick={() => setSkills(skills.filter((x) => x !== s))}>
+                <Badge
+                  key={s}
+                  variant="secondary"
+                  className="cursor-pointer"
+                  onClick={() => setSkills(skills.filter((x) => x !== s))}
+                >
                   {s} ×
                 </Badge>
               ))}

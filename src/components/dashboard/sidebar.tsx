@@ -12,6 +12,7 @@ import {
   MessageSquare,
   Settings,
   Package,
+  BadgeCheck,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -81,6 +82,12 @@ const navItems: NavItem[] = [
     permissions: ["dashboard:buyer"],
   },
   {
+    href: "/dashboard/verification",
+    label: "Verification",
+    icon: BadgeCheck,
+    permissions: ["dashboard:seller"],
+  },
+  {
     href: "/dashboard/admin",
     label: "Admin",
     icon: Shield,
@@ -90,6 +97,12 @@ const navItems: NavItem[] = [
     href: "/dashboard/admin/users",
     label: "Users",
     icon: Users,
+    permissions: ["admin:users"],
+  },
+  {
+    href: "/dashboard/admin/verification",
+    label: "Blue ticks",
+    icon: BadgeCheck,
     permissions: ["admin:users"],
   },
 ];
