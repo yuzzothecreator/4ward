@@ -356,10 +356,10 @@ export default function AdminUsersPage() {
                           </span>
                         ) : null}
                       </p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="truncate text-xs text-muted-foreground">
                         {u.email} · @{u.username} · {u.university}
                       </p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="break-words text-xs text-muted-foreground">
                         {u.projectsCount} projects · {u.purchasesCount} purchases ·{" "}
                         {u.reviewsCount} reviews · joined{" "}
                         {new Date(u.createdAt).toLocaleDateString()}

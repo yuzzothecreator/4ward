@@ -367,11 +367,11 @@ function MessagesPageInner() {
         </Card>
       )}
 
-      <div className="grid gap-4 lg:h-[min(70vh,640px)] lg:grid-cols-3">
+      <div className="grid gap-4 max-lg:min-h-[70vh] lg:h-[min(70vh,640px)] lg:grid-cols-3">
         <Card
           className={cn(
-            "overflow-hidden lg:col-span-1",
-            mobileShowChat ? "hidden lg:flex lg:flex-col" : "flex flex-col"
+            "flex max-h-[70vh] flex-col overflow-hidden lg:col-span-1 lg:max-h-none",
+            mobileShowChat ? "hidden lg:flex" : "flex"
           )}
         >
           <CardHeader className="space-y-3 border-b border-border pb-3">
@@ -448,7 +448,7 @@ function MessagesPageInner() {
 
         <Card
           className={cn(
-            "flex min-h-[420px] flex-col lg:col-span-2 lg:min-h-0",
+            "flex max-h-[70vh] min-h-[420px] flex-col overflow-hidden lg:col-span-2 lg:max-h-none lg:min-h-0",
             mobileShowChat ? "flex" : "hidden lg:flex"
           )}
         >
@@ -519,7 +519,7 @@ function MessagesPageInner() {
                       ) : null}
                       <div
                         className={cn(
-                          "rounded-2xl px-4 py-2 text-sm",
+                          "break-words rounded-2xl px-4 py-2 text-sm",
                           m.mine
                             ? "bg-primary text-primary-foreground"
                             : "bg-foreground/10 text-foreground"

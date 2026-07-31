@@ -103,6 +103,7 @@ body {
   font-family: "Space Grotesk", system-ui, sans-serif;
   min-height: 100vh;
   overflow-x: clip;
+  overflow-wrap: anywhere;
   transition: background-color 0.25s ease, color 0.25s ease;
 }
 

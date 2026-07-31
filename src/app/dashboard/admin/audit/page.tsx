@@ -305,10 +305,10 @@ function AuditInner() {
                     {new Date(l.createdAt).toLocaleString()}
                   </p>
                 </div>
-                <p className="mt-1 font-mono text-[11px] text-muted-foreground">
+                <p className="mt-1 break-all font-mono text-[11px] text-muted-foreground">
                   {l.action}
                 </p>
-                <p className="text-xs text-muted">
+                <p className="break-words text-xs text-muted">
                   {l.actorEmail || "system"}
                   {l.actorRole ? ` · ${l.actorRole}` : ""}
                   {l.entity ? ` · ${l.entity}` : ""}

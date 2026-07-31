@@ -56,14 +56,12 @@ export function ProjectCard({ project, index = 0 }: { project: DemoProject; inde
               {formatPrice(project.price)}
             </span>
           </div>
-          <p className="flex items-center gap-1 truncate text-[13px] text-muted">
-            <span className="truncate">
-              {project.seller.name}
-              {project.seller.badges?.includes("VERIFIED_CREATOR") ? (
-                <VerifiedTick className="ml-1 inline-block align-text-bottom" />
-              ) : null}
-            </span>
-            <span className="shrink-0"> · {project.seller.university}</span>
+          <p className="flex min-w-0 items-center gap-1 text-[13px] text-muted">
+            <span className="truncate">{project.seller.name}</span>
+            {project.seller.badges?.includes("VERIFIED_CREATOR") ? (
+              <VerifiedTick className="inline-block shrink-0 align-text-bottom" />
+            ) : null}
+            <span className="min-w-0 truncate"> · {project.seller.university}</span>
           </p>
           <div className="flex items-center justify-between gap-2">
             <Badge variant="outline" className="font-normal">

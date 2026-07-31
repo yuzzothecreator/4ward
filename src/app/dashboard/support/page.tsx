@@ -350,7 +350,7 @@ export default function SupportPage() {
                     <Badge variant="warning">{r.status}</Badge>
                   </div>
                   {canResolve && (
-                    <div className="mt-2 flex gap-2">
+                    <div className="mt-2 flex flex-wrap gap-2">
                       <Button
                         size="sm"
                         variant="outline"

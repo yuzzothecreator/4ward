@@ -352,16 +352,18 @@ export default function AdminPage() {
               recentPurchases.map((p) => (
                 <div
                   key={p.id}
-                  className="flex items-start justify-between gap-3 rounded-xl border border-border p-3"
+                  className="flex flex-col gap-2 rounded-xl border border-border p-3 sm:flex-row sm:items-start sm:justify-between"
                 >
-                  <div>
-                    <p className="text-sm font-medium text-foreground">{p.projectTitle}</p>
-                    <p className="text-xs text-muted-foreground">
+                  <div className="min-w-0">
+                    <p className="break-words text-sm font-medium text-foreground">
+                      {p.projectTitle}
+                    </p>
+                    <p className="break-words text-xs text-muted-foreground">
                       {p.buyerName} · {p.gateway || "payment"} ·{" "}
                       {new Date(p.createdAt).toLocaleString()}
                     </p>
                   </div>
-                  <p className="text-sm font-semibold text-foreground">
+                  <p className="shrink-0 text-sm font-semibold text-foreground">
                     {formatPrice(p.amount)}
                   </p>
                 </div>

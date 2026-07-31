@@ -59,9 +59,9 @@ export default function ProjectDetailPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
-        <div className="grid gap-10 lg:grid-cols-3">
-          <div className="space-y-6 lg:col-span-2">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10">
+        <div className="grid gap-6 lg:grid-cols-3 lg:gap-10">
+          <div className="min-w-0 space-y-6 lg:col-span-2">
             <div className="relative aspect-video overflow-hidden rounded-2xl border border-border">
               <Image
                 src={project.coverImage}
@@ -79,48 +79,19 @@ export default function ProjectDetailPage() {
                 <Badge variant="secondary">{project.license.replace("_", " ")}</Badge>
                 {project.pricingType === "FREE" && <Badge variant="success">Free</Badge>}
               </div>
-              <h1 className="text-3xl font-bold text-foreground sm:text-4xl">{project.title}</h1>
-              <p className="mt-3 text-muted">{project.description}</p>
+              <h1 className="text-2xl font-bold break-words text-foreground sm:text-3xl lg:text-4xl">
+                {project.title}
+              </h1>
+              <p className="mt-3 break-words text-muted">{project.description}</p>
             </div>
-
-            <div>
-              <h2 className="mb-3 text-lg font-semibold text-foreground">Tech stack</h2>
-              <div className="flex flex-wrap gap-2">
-                {project.technologyStack.map((t) => (
-                  <Badge key={t} variant="outline">
-                    {t}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-
-            <Card>
-              <CardContent className="grid grid-cols-3 gap-2 p-4 text-center sm:gap-4 sm:p-6">
-                <div className="min-w-0">
-                  <p className="text-lg font-bold text-foreground sm:text-2xl">{formatNumber(project.views)}</p>
-                  <p className="text-[10px] text-muted-foreground sm:text-xs">Views</p>
-                </div>
-                <div className="min-w-0">
-                  <p className="text-lg font-bold text-foreground sm:text-2xl">{formatNumber(project.downloads)}</p>
-                  <p className="text-[10px] text-muted-foreground sm:text-xs">Downloads</p>
-                </div>
-                <div className="min-w-0">
-                  <p className="flex items-center justify-center gap-1 text-lg font-bold text-amber-400 sm:text-2xl">
-                    <Star className="h-4 w-4 fill-amber-400 sm:h-5 sm:w-5" />
-                    {displayReviewCount > 0 ? displayRating : "—"}
-                  </p>
-                  <p className="text-[10px] text-muted-foreground sm:text-xs">
-                    {displayReviewCount} {displayReviewCount === 1 ? "review" : "reviews"}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
           </div>
 
-          <div className="space-y-4">
-            <Card className="sticky top-24">
-              <CardContent className="space-y-5 p-6">
-                <div className="text-3xl font-bold text-foreground">{formatPrice(project.price)}</div>
+          <div className="min-w-0 space-y-4 lg:row-span-2 lg:self-start">
+            <Card className="lg:sticky lg:top-24">
+              <CardContent className="space-y-5 p-5 sm:p-6">
+                <div className="text-3xl font-bold text-foreground">
+                  {formatPrice(project.price)}
+                </div>
                 <PurchaseButton project={project} />
                 <div className="flex flex-col gap-2">
                   {project.demoUrl && (
@@ -142,37 +113,42 @@ export default function ProjectDetailPage() {
                 </div>
                 <div className="space-y-2 border-t border-border pt-4 text-sm text-muted">
                   <p className="flex items-center gap-2">
-                    <Download className="h-4 w-4 text-primary" />
+                    <Download className="h-4 w-4 shrink-0 text-primary" />
                     Instant secure download
                   </p>
                   <p className="flex items-center gap-2">
-                    <Shield className="h-4 w-4 text-primary" />
-                    License: {project.license.replace("_", " ")}
+                    <Shield className="h-4 w-4 shrink-0 text-primary" />
+                    <span className="min-w-0 break-words">
+                      License: {project.license.replace("_", " ")}
+                    </span>
                   </p>
                 </div>
               </CardContent>
             </Card>
 
             <Card>
-              <CardContent className="p-6">
-                <Link href={`/${project.seller.username}`} className="flex items-center gap-3">
+              <CardContent className="p-5 sm:p-6">
+                <Link
+                  href={`/${project.seller.username}`}
+                  className="flex min-w-0 items-center gap-3"
+                >
                   <Image
                     src={project.seller.avatar}
                     alt={project.seller.name}
                     width={48}
                     height={48}
-                    className="rounded-full"
+                    className="shrink-0 rounded-full"
                   />
-                  <div>
+                  <div className="min-w-0">
                     <p className="flex items-center gap-1 font-medium text-foreground">
-                      {project.seller.name}
+                      <span className="truncate">{project.seller.name}</span>
                       {project.seller.badges?.includes("VERIFIED_CREATOR") ? (
                         <VerifiedTick />
                       ) : null}
                     </p>
-                    <p className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <GraduationCap className="h-3 w-3" />
-                      {project.seller.university}
+                    <p className="flex items-center gap-1 truncate text-xs text-muted-foreground">
+                      <GraduationCap className="h-3 w-3 shrink-0" />
+                      <span className="truncate">{project.seller.university}</span>
                     </p>
                   </div>
                 </Link>
@@ -192,6 +168,45 @@ export default function ProjectDetailPage() {
                     Message seller
                   </Button>
                 </Link>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="min-w-0 space-y-6 lg:col-span-2">
+            <div>
+              <h2 className="mb-3 text-lg font-semibold text-foreground">Tech stack</h2>
+              <div className="flex flex-wrap gap-2">
+                {project.technologyStack.map((t) => (
+                  <Badge key={t} variant="outline">
+                    {t}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+
+            <Card>
+              <CardContent className="grid grid-cols-3 gap-2 p-4 text-center sm:gap-4 sm:p-6">
+                <div className="min-w-0">
+                  <p className="text-lg font-bold text-foreground sm:text-2xl">
+                    {formatNumber(project.views)}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground sm:text-xs">Views</p>
+                </div>
+                <div className="min-w-0">
+                  <p className="text-lg font-bold text-foreground sm:text-2xl">
+                    {formatNumber(project.downloads)}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground sm:text-xs">Downloads</p>
+                </div>
+                <div className="min-w-0">
+                  <p className="flex items-center justify-center gap-1 text-lg font-bold text-amber-400 sm:text-2xl">
+                    <Star className="h-4 w-4 fill-amber-400 sm:h-5 sm:w-5" />
+                    {displayReviewCount > 0 ? displayRating : "—"}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground sm:text-xs">
+                    {displayReviewCount} {displayReviewCount === 1 ? "review" : "reviews"}
+                  </p>
+                </div>
               </CardContent>
             </Card>
           </div>

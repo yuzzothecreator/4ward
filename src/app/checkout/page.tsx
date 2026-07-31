@@ -13,7 +13,7 @@ import { useAppStore } from "@/store/use-app-store";
 import { RequireAuth } from "@/components/auth/require-auth";
 import Link from "next/link";
 
-type PayMethod = "clickpesa" | "stripe" | "demo";
+type PayMethod = "clickpesa" | "demo";
 
 type MethodsResponse = {
   methods: Record<
@@ -59,7 +59,6 @@ function CheckoutInner() {
       .then((data: MethodsResponse) => {
         setMethods(data.methods);
         if (data.methods?.clickpesa?.enabled) setMethod("clickpesa");
-        else if (data.methods?.stripe?.enabled) setMethod("stripe");
         else setMethod("demo");
       })
       .catch(() => setMethod("demo"));
@@ -165,7 +164,6 @@ function CheckoutInner() {
 
   const alreadyOwned = hasPurchased(project.id);
   const clickpesaReady = Boolean(methods?.clickpesa?.enabled);
-  const stripeReady = Boolean(methods?.stripe?.enabled);
   const campusBlocked = Boolean(campusLock && !campusLock.allowed);
 
   async function payWithClickPesa() {
@@ -197,37 +195,6 @@ function CheckoutInner() {
       setPolling(true);
     } catch {
       setError("Network error starting ClickPesa payment");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function payWithStripe() {
-    setError("");
-    setLoading(true);
-    try {
-      const res = await fetch("/api/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          projectId: project!.id,
-          slug: project!.slug,
-          email: user?.email,
-          university: user?.university,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || "Checkout blocked");
-        return;
-      }
-      if (data.url) {
-        window.location.href = data.url;
-        return;
-      }
-      setError(data.message || data.error || "Stripe checkout unavailable — try mobile money or demo.");
-    } catch {
-      setError("Stripe checkout failed");
     } finally {
       setLoading(false);
     }
@@ -383,19 +350,21 @@ function CheckoutInner() {
                 </button>
                 <button
                   type="button"
-                  disabled={!stripeReady}
-                  onClick={() => stripeReady && setMethod("stripe")}
-                  className={`flex w-full items-center gap-3 rounded-xl border p-3 text-left text-sm transition ${
-                    method === "stripe"
-                      ? "border-primary bg-primary/15 text-foreground"
-                      : "border-border text-muted hover:bg-foreground/5"
-                  } ${!stripeReady ? "opacity-60" : ""}`}
+                  disabled
+                  className="flex w-full cursor-not-allowed items-center gap-3 rounded-xl border border-border p-3 text-left text-sm opacity-60"
                 >
                   <CreditCard className="h-4 w-4" />
-                  Card / Stripe
-                  {!stripeReady && <Badge variant="outline">Optional</Badge>}
+                  <span className="flex-1">
+                    <span className="block font-medium text-foreground">
+                      Card / Stripe
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      Visa · Mastercard
+                    </span>
+                  </span>
+                  <Badge variant="outline">Coming soon</Badge>
                 </button>
-                {!clickpesaReady && !stripeReady && (
+                {!clickpesaReady && (
                   <button
                     type="button"
                     onClick={() => setMethod("demo")}
@@ -429,7 +398,7 @@ function CheckoutInner() {
                     </p>
                   </div>
                   {orderReference && (
-                    <p className="text-xs text-muted-foreground">
+                    <p className="break-all text-xs text-muted-foreground">
                       Order ref:{" "}
                       <span className="font-mono text-foreground">{orderReference}</span>
                       {channel ? ` · ${channel}` : ""}
@@ -455,17 +424,6 @@ function CheckoutInner() {
                     </p>
                   )}
                 </div>
-              )}
-
-              {method === "stripe" && (
-                <Button
-                  className="w-full"
-                  disabled={loading || campusBlocked}
-                  onClick={payWithStripe}
-                >
-                  {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-                  Pay {formatPrice(project.price)} with card
-                </Button>
               )}
 
               {method === "demo" && (

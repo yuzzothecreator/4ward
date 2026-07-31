@@ -190,25 +190,27 @@ export function DashboardMobileNav() {
 
   return (
     <div className="mb-4 lg:hidden">
-      <div className="flex flex-wrap gap-2">
-        {links.map((link) => {
-          const active = isActivePath(pathname, link.href);
-          return (
-            <Link
-              key={link.href}
-              href={link.href}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs",
-                active
-                  ? "border-primary bg-primary/20 text-primary"
-                  : "border-border text-muted"
-              )}
-            >
-              <link.icon className="h-3.5 w-3.5" />
-              {link.label}
-            </Link>
-          );
-        })}
+      <div className="-mx-1 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="flex w-max gap-2 px-1">
+          {links.map((link) => {
+            const active = isActivePath(pathname, link.href);
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={cn(
+                  "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs",
+                  active
+                    ? "border-primary bg-primary/20 text-primary"
+                    : "border-border text-muted"
+                )}
+              >
+                <link.icon className="h-3.5 w-3.5" />
+                {link.label}
+              </Link>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

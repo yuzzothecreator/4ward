@@ -242,15 +242,17 @@ export default function HomePage() {
       {/* Featured */}
       <section className="border-b border-border">
         <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-24">
-          <div className="mb-10 flex items-end justify-between gap-4">
+          <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="font-mono text-xs text-muted-foreground">6.0 Catalog</p>
               <h2 className="font-display mt-2 text-3xl font-semibold tracking-tight text-foreground">
                 Fresh on the shelf
               </h2>
             </div>
-            <Link href="/marketplace">
-              <Button variant="outline">Browse all</Button>
+            <Link href="/marketplace" className="w-full sm:w-auto">
+              <Button variant="outline" className="w-full sm:w-auto">
+                Browse all
+              </Button>
             </Link>
           </div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
