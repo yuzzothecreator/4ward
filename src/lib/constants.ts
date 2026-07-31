@@ -86,7 +86,7 @@ export const LISTING_TYPES = [
     value: "MARKET",
     label: "Market",
     description:
-      "Real commercial product or system — open to any buyer, company-ready pricing.",
+      "Real commercial product or system — verified sellers only; open to any buyer, company-ready pricing.",
     badgeClass:
       "border-amber-500/50 bg-amber-500/15 text-amber-800 dark:text-amber-300",
     defaultLicense: "COMMERCIAL" as const,

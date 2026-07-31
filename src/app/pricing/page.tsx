@@ -44,6 +44,7 @@ const plans = [
       "For real products and systems any company or developer can buy and use.",
     features: [
       "Commercial listing badge",
+      "Verified seller required",
       "No campus exclusivity lock",
       "Open to companies & freelancers",
       "Commercial license options",

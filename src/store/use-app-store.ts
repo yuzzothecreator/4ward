@@ -233,6 +233,13 @@ export const useAppStore = create<AppState>()(
 
       addListing: (values, opts) => {
         const user = get().user;
+        const wantsMarket =
+          values.listingType === "MARKET" || values.license === "COMMERCIAL";
+        if (wantsMarket && !user?.verified) {
+          throw new Error(
+            "Only verified sellers can list Market / commercial products."
+          );
+        }
         if (user) {
           set({ user: { ...user, role: elevateRole(user.role, "SELLER") } });
         }

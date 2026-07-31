@@ -86,6 +86,9 @@ export async function POST(req: Request) {
     }
 
     const status = body.status === "DRAFT" ? "DRAFT" : "PUBLISHED";
+    const wantsMarket =
+      parsed.data.listingType === "MARKET" ||
+      parsed.data.license === "COMMERCIAL";
     const slugBase = slugify(parsed.data.title);
     const payload = {
       title: parsed.data.title,
@@ -110,6 +113,17 @@ export async function POST(req: Request) {
 
     const db = await pingDatabase();
     if (!db.ok) {
+      // Demo / offline: still reject Market unless client says verified
+      if (wantsMarket && body.sellerVerified !== true) {
+        return NextResponse.json(
+          {
+            error:
+              "Only verified sellers can list Market / commercial products. Request verification first.",
+            code: "VERIFICATION_REQUIRED",
+          },
+          { status: 403 }
+        );
+      }
       const project = {
         id: `proj_${Date.now()}`,
         ...payload,
@@ -144,7 +158,22 @@ export async function POST(req: Request) {
         university: body.university || "University of Dar es Salaam",
         isApproved: true,
       },
+      include: { badges: { select: { badge: true } } },
     });
+
+    if (wantsMarket) {
+      const verified = seller.badges.some((b) => b.badge === "VERIFIED_CREATOR");
+      if (!verified) {
+        return NextResponse.json(
+          {
+            error:
+              "Only verified sellers can list Market / commercial products. Request verification first.",
+            code: "VERIFICATION_REQUIRED",
+          },
+          { status: 403 }
+        );
+      }
+    }
 
     let slug = slugBase;
     const existing = await prisma.project.findUnique({ where: { slug } });

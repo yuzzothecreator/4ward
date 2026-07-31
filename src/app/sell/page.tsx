@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -29,6 +29,8 @@ function SellForm() {
   const [sourcePath, setSourcePath] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadMsg, setUploadMsg] = useState("");
+  const [publishError, setPublishError] = useState("");
+  const isVerified = Boolean(user?.verified);
 
   const {
     register,
@@ -53,6 +55,16 @@ function SellForm() {
   const listingType = watch("listingType");
   const license = watch("license");
   const title = watch("title");
+
+  useEffect(() => {
+    if (!isVerified && (listingType === "MARKET" || license === "COMMERCIAL")) {
+      setValue("listingType", "CAMPUS", { shouldValidate: true });
+      setValue("license", "EDUCATIONAL", { shouldValidate: true });
+      if (pricingType === "PAID") {
+        setValue("price", 75000, { shouldValidate: true });
+      }
+    }
+  }, [isVerified, listingType, license, pricingType, setValue]);
 
   function toggleTech(tech: string) {
     const next = selectedTech.includes(tech)
@@ -111,17 +123,37 @@ function SellForm() {
   }
 
   async function onSubmit(values: ProjectFormValues, asDraft: boolean) {
+    const wantsMarket =
+      values.listingType === "MARKET" || values.license === "COMMERCIAL";
+    if (wantsMarket && !user?.verified) {
+      setPublishError(
+        "Only verified sellers can list Market / commercial products. Request verification first."
+      );
+      return;
+    }
+    setPublishError("");
+
     let path = sourcePath;
     if (sourceFile && !path) {
       path = await uploadSource(sourceFile, values.title);
     }
 
-    const project = addListing(values, {
-      status: asDraft ? "DRAFT" : "PUBLISHED",
-      sourceFile: path || undefined,
-    });
+    let project: DemoProject;
+    try {
+      project = addListing(values, {
+        status: asDraft ? "DRAFT" : "PUBLISHED",
+        sourceFile: path || undefined,
+      });
+    } catch (err) {
+      setPublishError(
+        err instanceof Error
+          ? err.message
+          : "Only verified sellers can list Market products."
+      );
+      return;
+    }
 
-    await fetch("/api/projects", {
+    const res = await fetch("/api/projects", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -132,8 +164,19 @@ function SellForm() {
         sellerName: user?.name,
         sellerUsername: user?.username,
         university: user?.university,
+        sellerVerified: Boolean(user?.verified),
       }),
     }).catch(() => null);
+
+    if (res && !res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setPublishError(
+        typeof data.error === "string"
+          ? data.error
+          : "Could not publish this listing. Try again."
+      );
+      return;
+    }
 
     setPublished(project);
   }
@@ -338,46 +381,75 @@ function SellForm() {
               <CardTitle>Who is this for?</CardTitle>
               <CardDescription>
                 Campus = student presentation pricing. Market = real commercial
-                product for companies and developers.
+                product for companies and developers — verified sellers only.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
+              {!isVerified ? (
+                <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2.5 text-sm text-amber-950 dark:text-amber-100">
+                  <p className="font-medium">Verification required for Market</p>
+                  <p className="mt-1 text-xs text-amber-900/85 dark:text-amber-100/80">
+                    Anyone can list Campus projects. To sell commercial / Market
+                    products, get the blue-tick first.
+                  </p>
+                  <Link
+                    href="/dashboard/verification"
+                    className="mt-2 inline-block text-xs font-semibold underline"
+                  >
+                    Request verification
+                  </Link>
+                </div>
+              ) : null}
               <div className="grid gap-3 sm:grid-cols-2">
-                {LISTING_TYPES.map((lt) => (
-                  <button
-                    key={lt.value}
-                    type="button"
-                    onClick={() => {
-                      setValue("listingType", lt.value, { shouldValidate: true });
-                      setValue("license", lt.defaultLicense, {
-                        shouldValidate: true,
-                      });
-                      if (pricingType === "PAID") {
-                        setValue("price", lt.suggestedPrice, {
+                {LISTING_TYPES.map((lt) => {
+                  const marketLocked = lt.value === "MARKET" && !isVerified;
+                  return (
+                    <button
+                      key={lt.value}
+                      type="button"
+                      disabled={marketLocked}
+                      onClick={() => {
+                        if (marketLocked) return;
+                        setValue("listingType", lt.value, {
                           shouldValidate: true,
                         });
-                      }
-                    }}
-                    className={cn(
-                      "rounded-xl border p-4 text-left transition",
-                      listingType === lt.value
-                        ? lt.value === "MARKET"
-                          ? "border-amber-500/60 bg-amber-500/10"
-                          : "border-cyan-500/50 bg-cyan-500/10"
-                        : "border-border hover:bg-foreground/5"
-                    )}
-                  >
-                    <div className="mb-2">
-                      <ListingTypeBadge listingType={lt.value} />
-                    </div>
-                    <p className="text-sm font-medium text-foreground">
-                      {lt.label}
-                    </p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {lt.description}
-                    </p>
-                  </button>
-                ))}
+                        setValue("license", lt.defaultLicense, {
+                          shouldValidate: true,
+                        });
+                        if (pricingType === "PAID") {
+                          setValue("price", lt.suggestedPrice, {
+                            shouldValidate: true,
+                          });
+                        }
+                        setPublishError("");
+                      }}
+                      className={cn(
+                        "rounded-xl border p-4 text-left transition",
+                        marketLocked && "cursor-not-allowed opacity-55",
+                        listingType === lt.value
+                          ? lt.value === "MARKET"
+                            ? "border-amber-500/60 bg-amber-500/10"
+                            : "border-cyan-500/50 bg-cyan-500/10"
+                          : "border-border hover:bg-foreground/5"
+                      )}
+                    >
+                      <div className="mb-2 flex flex-wrap items-center gap-2">
+                        <ListingTypeBadge listingType={lt.value} />
+                        {marketLocked ? (
+                          <Badge variant="warning" className="font-normal">
+                            Verified only
+                          </Badge>
+                        ) : null}
+                      </div>
+                      <p className="text-sm font-medium text-foreground">
+                        {lt.label}
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {lt.description}
+                      </p>
+                    </button>
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
@@ -481,6 +553,19 @@ function SellForm() {
           </Card>
 
           <div className="flex flex-col gap-3 sm:flex-row">
+            {publishError ? (
+              <p className="w-full text-sm text-destructive sm:order-first sm:basis-full">
+                {publishError}{" "}
+                {!isVerified ? (
+                  <Link
+                    href="/dashboard/verification"
+                    className="font-medium underline"
+                  >
+                    Get verified
+                  </Link>
+                ) : null}
+              </p>
+            ) : null}
             <Button
               type="button"
               variant="secondary"
