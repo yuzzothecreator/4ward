@@ -33,7 +33,7 @@ function DemoSignInForm() {
     try {
       const user = signIn({ email });
       if (user.role === "ADMIN") {
-        await ensureAdminSession(user);
+        await ensureAdminSession({ ...user, password });
       } else {
         clearAdminToken();
       }
@@ -50,7 +50,9 @@ function DemoSignInForm() {
       <CardHeader className="text-center">
         <CardTitle>Sign in to 4ward</CardTitle>
         <CardDescription>
-          Access your dashboard. Demo admin: {DEMO_ADMIN_EMAIL}
+          Access your dashboard. Production admin uses the email from{" "}
+          <span className="text-foreground">ADMIN_EMAIL</span> with the bootstrap
+          password (12+ chars). Demo hint: {DEMO_ADMIN_EMAIL}
         </CardDescription>
       </CardHeader>
       <CardContent>

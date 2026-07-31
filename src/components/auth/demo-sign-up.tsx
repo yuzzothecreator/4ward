@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAppStore } from "@/store/use-app-store";
-import { DEMO_ADMIN_EMAIL, defaultRedirectForRole } from "@/lib/rbac";
+import { DEMO_ADMIN_EMAIL } from "@/lib/rbac";
 
 export function DemoSignUp() {
   const router = useRouter();
@@ -38,7 +38,9 @@ export function DemoSignUp() {
       university: university || undefined,
       intent,
     });
-    const next = searchParams.get("next") || defaultRedirectForRole(user.role);
+    const next =
+      searchParams.get("next") ||
+      (intent === "SELLER" ? "/sell" : "/marketplace");
     router.push(next);
   }
 

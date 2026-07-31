@@ -1,17 +1,22 @@
 import { createHmac, timingSafeEqual, randomBytes } from "crypto";
 import { NextResponse } from "next/server";
 import { rateLimit } from "@/lib/rate-limit";
+import { getAdminSessionSecret, isProductionRuntime } from "@/lib/admin-config";
 
 const ADMIN_TOKEN_TTL_MS = 2 * 60 * 60 * 1000; // 2 hours
 
 function getSigningSecret() {
-  return (
-    process.env.ADMIN_SESSION_SECRET ||
-    process.env.CLICKPESA_API_KEY ||
-    process.env.CLERK_SECRET_KEY ||
-    process.env.DATABASE_URL ||
-    "4ward-dev-insecure-admin-secret"
-  );
+  try {
+    return getAdminSessionSecret();
+  } catch {
+    if (isProductionRuntime()) throw new Error("ADMIN_SESSION_SECRET required");
+    return (
+      process.env.ADMIN_SESSION_SECRET ||
+      process.env.CLICKPESA_API_KEY ||
+      process.env.CLERK_SECRET_KEY ||
+      "4ward-dev-insecure-admin-secret"
+    );
+  }
 }
 
 export function clientIp(req: Request) {

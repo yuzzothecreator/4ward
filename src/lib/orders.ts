@@ -2,6 +2,7 @@ import { randomBytes } from "crypto";
 import { calculateFees } from "@/lib/stripe";
 import { getPrisma, pingDatabase } from "@/lib/prisma";
 import { demoProjects } from "@/lib/demo-data";
+import { ensureAppUser } from "@/lib/users";
 import {
   getPendingPayment,
   updatePendingPayment,
@@ -31,11 +32,6 @@ export type FulfilledPurchase = {
   paymentStatus: string;
   demo: boolean;
 };
-
-function slugifyUsername(email: string) {
-  const base = email.split("@")[0] || "buyer";
-  return base.replace(/[^a-z0-9_-]/gi, "").toLowerCase().slice(0, 20) || "buyer";
-}
 
 /**
  * Persist a completed payment as Purchase + Transaction.
@@ -84,20 +80,16 @@ export async function fulfillPurchase(
     };
   }
 
-  const buyer = await prisma.user.upsert({
-    where: { email },
-    update: {
-      name: input.buyerName || undefined,
-    },
-    create: {
-      clerkId: `local_${email}`,
-      name: input.buyerName || email.split("@")[0] || "Buyer",
-      email,
-      username: `${slugifyUsername(email)}_${randomBytes(2).toString("hex")}`,
-      role: "BUYER",
-      university: "University of Dar es Salaam",
-    },
+  const buyerResult = await ensureAppUser({
+    email,
+    name: input.buyerName,
+    clerkId: `local_${email}`,
+    minRole: "BUYER",
   });
+  const buyer = buyerResult.user;
+  if (!buyer) {
+    throw new Error(buyerResult.error || "Could not resolve buyer");
+  }
 
   let project = await prisma.project.findFirst({
     where: {
@@ -114,22 +106,27 @@ export async function fulfillPurchase(
       ? `${catalog.seller.username}@4ward.sellers`
       : "catalog@4ward.local";
 
-    const seller = await prisma.user.upsert({
-      where: { email: sellerEmail },
-      update: { role: "SELLER", isApproved: true },
-      create: {
-        clerkId: `seller_${sellerEmail}`,
-        name: catalog?.seller.name || "4ward Catalog",
-        email: sellerEmail,
-        username:
-          catalog?.seller.username ||
-          `catalog_${randomBytes(3).toString("hex")}`,
-        role: "SELLER",
-        university: catalog?.seller.university || "University of Dar es Salaam",
-        isApproved: true,
-        avatar: catalog?.seller.avatar,
-      },
+    const sellerResult = await ensureAppUser({
+      email: sellerEmail,
+      name: catalog?.seller.name || "4ward Catalog",
+      clerkId: `seller_${sellerEmail}`,
+      username: catalog?.seller.username,
+      university: catalog?.seller.university || "University of Dar es Salaam",
+      avatar: catalog?.seller.avatar,
+      minRole: "SELLER",
+      role: "SELLER",
     });
+    const seller = sellerResult.user;
+    if (!seller) {
+      throw new Error(sellerResult.error || "Could not resolve seller");
+    }
+    // ensure approved catalog sellers
+    if (!seller.isApproved) {
+      await prisma.user.update({
+        where: { id: seller.id },
+        data: { isApproved: true, role: "SELLER" },
+      });
+    }
 
     const slug =
       catalog?.slug ||

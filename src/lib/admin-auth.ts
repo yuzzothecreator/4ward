@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth, currentUser } from "@clerk/nextjs/server";
-import { DEMO_ADMIN_EMAIL, type AppRole, normalizeRole } from "@/lib/rbac";
+import { type AppRole, normalizeRole } from "@/lib/rbac";
 import { getPrisma, pingDatabase } from "@/lib/prisma";
 import {
   clientIp,
@@ -9,6 +9,12 @@ import {
   verifyAdminSessionToken,
   jsonSecure,
 } from "@/lib/security";
+import {
+  assertAdminSecretsConfigured,
+  getAdminEmail,
+  isAdminEmail,
+  isProductionRuntime,
+} from "@/lib/admin-config";
 
 const clerkEnabled = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
 
@@ -41,6 +47,18 @@ export async function requireAdminActor(
   req: Request,
   opts?: { mutate?: boolean }
 ): Promise<AdminGate> {
+  try {
+    assertAdminSecretsConfigured();
+  } catch (err) {
+    return {
+      ok: false,
+      response: jsonSecure(
+        { error: err instanceof Error ? err.message : "Admin secrets misconfigured" },
+        { status: 503 }
+      ),
+    };
+  }
+
   const ip = clientIp(req);
   const limited = requireRateLimit(req, "admin", opts?.mutate ? 30 : 60, 60_000);
   if (limited) return { ok: false, response: limited };
@@ -60,21 +78,23 @@ export async function requireAdminActor(
     }
     const user = await currentUser();
     const role = normalizeRole(user?.publicMetadata?.role, "BUYER");
-    if (role !== "ADMIN") {
+    const email =
+      user?.primaryEmailAddress?.emailAddress ||
+      user?.emailAddresses?.[0]?.emailAddress ||
+      "";
+    const normalizedEmail = email.toLowerCase();
+
+    if (role !== "ADMIN" || !isAdminEmail(normalizedEmail)) {
       return {
         ok: false,
         response: jsonSecure({ error: "Admin access required" }, { status: 403 }),
       };
     }
-    const email =
-      user?.primaryEmailAddress?.emailAddress ||
-      user?.emailAddresses?.[0]?.emailAddress ||
-      "";
     return {
       ok: true,
       role: "ADMIN",
       demo: false,
-      actorEmail: email.toLowerCase(),
+      actorEmail: normalizedEmail,
       actorUserId: undefined,
       ip,
     };
@@ -96,8 +116,15 @@ export async function requireAdminActor(
 
   const email = verified.email;
 
-  // Token alone is not enough — email must still be an admin in DB (or demo admin)
-  if (email === DEMO_ADMIN_EMAIL) {
+  if (!isAdminEmail(email)) {
+    return {
+      ok: false,
+      response: jsonSecure({ error: "Admin access required" }, { status: 403 }),
+    };
+  }
+
+  // Token + allowlist — also confirm DB role in production
+  if (email === getAdminEmail() && !isProductionRuntime()) {
     const db = await pingDatabase();
     let actorUserId: string | undefined;
     if (db.ok) {
@@ -130,7 +157,7 @@ export async function requireAdminActor(
   try {
     const prisma = await getPrisma();
     const row = await prisma.user.findUnique({ where: { email } });
-    if (row?.role === "ADMIN") {
+    if (row?.role === "ADMIN" && isAdminEmail(email)) {
       return {
         ok: true,
         role: "ADMIN",
@@ -194,12 +221,12 @@ export async function ensureAdminUsersSynced(opts: {
   const prisma = await getPrisma();
 
   await prisma.user.upsert({
-    where: { email: DEMO_ADMIN_EMAIL },
+    where: { email: getAdminEmail() },
     update: { role: "ADMIN", isApproved: true, name: "4ward Admin" },
     create: {
-      clerkId: `admin_${DEMO_ADMIN_EMAIL}`,
+      clerkId: `admin_${getAdminEmail()}`,
       name: "4ward Admin",
-      email: DEMO_ADMIN_EMAIL,
+      email: getAdminEmail(),
       username: "admin",
       role: "ADMIN",
       university: "4ward",
@@ -209,8 +236,7 @@ export async function ensureAdminUsersSynced(opts: {
 
   if (opts.sessionUser?.email) {
     const email = opts.sessionUser.email.trim().toLowerCase();
-    // Security: only the verified demo admin email gets ADMIN from sync.
-    // Other users keep their existing DB role (no client-side privilege escalation).
+    // Security: only allowlisted admin emails get ADMIN from sync.
     const usernameBase =
       (opts.sessionUser.username ||
         email.split("@")[0]?.replace(/[^a-z0-9_-]/gi, "") ||
@@ -224,7 +250,7 @@ export async function ensureAdminUsersSynced(opts: {
         data: {
           name: opts.sessionUser.name || undefined,
           university: opts.sessionUser.university || undefined,
-          ...(email === DEMO_ADMIN_EMAIL
+          ...(isAdminEmail(email)
             ? { role: "ADMIN" as AppRole, isApproved: true }
             : {}),
         },
@@ -240,9 +266,9 @@ export async function ensureAdminUsersSynced(opts: {
           name: opts.sessionUser.name || email.split("@")[0] || "User",
           email,
           username,
-          role: email === DEMO_ADMIN_EMAIL ? "ADMIN" : "BUYER",
+          role: isAdminEmail(email) ? "ADMIN" : "BUYER",
           university: opts.sessionUser.university || "University of Dar es Salaam",
-          isApproved: email === DEMO_ADMIN_EMAIL,
+          isApproved: isAdminEmail(email),
         },
       });
     }

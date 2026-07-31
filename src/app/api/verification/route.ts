@@ -1,7 +1,7 @@
-import { randomBytes } from "crypto";
 import { NextResponse } from "next/server";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { getPrisma, pingDatabase } from "@/lib/prisma";
+import { ensureAppUser } from "@/lib/users";
 import {
   requireRateLimit,
   requireSameOrigin,
@@ -11,11 +11,6 @@ import {
 export const dynamic = "force-dynamic";
 
 const clerkEnabled = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
-
-function slugifyUsername(email: string) {
-  const base = email.split("@")[0] || "seller";
-  return base.replace(/[^a-z0-9_-]/gi, "").toLowerCase().slice(0, 20) || "seller";
-}
 
 async function resolveRequester(body: { email?: string; name?: string }) {
   if (clerkEnabled) {
@@ -32,13 +27,13 @@ async function resolveRequester(body: { email?: string; name?: string }) {
       clerkUser?.fullName ||
       email.split("@")[0] ||
       "Seller";
-    return { email, name };
+    return { email, name, clerkId: userId };
   }
 
   const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
   const name = typeof body.name === "string" ? sanitizeText(body.name, 80) : "";
   if (!email) return { error: "Sign in to request verification", status: 401 as const };
-  return { email, name: name || email.split("@")[0] || "Seller" };
+  return { email, name: name || email.split("@")[0] || "Seller", clerkId: `local_${email}` };
 }
 
 /**
@@ -161,25 +156,26 @@ export async function POST(req: Request) {
       );
     }
 
+    const userResult = await ensureAppUser({
+      email: who.email,
+      name: who.name,
+      clerkId: who.clerkId,
+      minRole: "SELLER",
+    });
+    const user = userResult.user;
+    if (!user) {
+      return NextResponse.json(
+        { error: userResult.error || "Could not resolve user" },
+        { status: 503 }
+      );
+    }
+
     const prisma = await getPrisma();
-    const user = await prisma.user.upsert({
-      where: { email: who.email },
-      update: {
-        name: who.name || undefined,
-        role: "SELLER",
-      },
-      create: {
-        clerkId: `local_${who.email}`,
-        name: who.name,
-        email: who.email,
-        username: `${slugifyUsername(who.email)}_${randomBytes(2).toString("hex")}`,
-        role: "SELLER",
-        university: "University of Dar es Salaam",
-      },
-      include: { badges: true },
+    const badges = await prisma.userBadge.findMany({
+      where: { userId: user.id },
     });
 
-    if (user.badges.some((b) => b.badge === "VERIFIED_CREATOR")) {
+    if (badges.some((b) => b.badge === "VERIFIED_CREATOR")) {
       return NextResponse.json(
         { error: "You already have a verified blue tick." },
         { status: 409 }

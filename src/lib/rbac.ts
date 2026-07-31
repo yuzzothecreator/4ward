@@ -50,8 +50,11 @@ export const ROLE_LABELS: Record<AppRole, string> = {
   ADMIN: "Admin",
 };
 
-/** Demo shortcut: this email always signs in as ADMIN */
-export const DEMO_ADMIN_EMAIL = "admin@4ward.com";
+/** Demo / bootstrap admin email — from ADMIN_EMAIL env (see admin-config). */
+export const DEMO_ADMIN_EMAIL =
+  (typeof process !== "undefined" && process.env.NEXT_PUBLIC_ADMIN_EMAIL?.trim().toLowerCase()) ||
+  (typeof process !== "undefined" && process.env.ADMIN_EMAIL?.trim().toLowerCase()) ||
+  "admin@4ward.com";
 
 export function isAppRole(value: unknown): value is AppRole {
   return value === "BUYER" || value === "SELLER" || value === "ADMIN";
@@ -62,7 +65,14 @@ export function normalizeRole(value: unknown, fallback: AppRole = "BUYER"): AppR
 }
 
 export function roleFromEmail(email: string, preferred?: AppRole): AppRole {
-  if (email.trim().toLowerCase() === DEMO_ADMIN_EMAIL) return "ADMIN";
+  const normalized = email.trim().toLowerCase();
+  // Client-safe hint only — real auth is enforced server-side via allowlist + password/Clerk
+  if (normalized === DEMO_ADMIN_EMAIL) return "ADMIN";
+  const publicList = (process.env.NEXT_PUBLIC_ADMIN_EMAIL || "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  if (publicList.includes(normalized)) return "ADMIN";
   return preferred || "BUYER";
 }
 
@@ -102,6 +112,6 @@ export function elevateRole(current: AppRole, next: AppRole): AppRole {
 
 export function defaultRedirectForRole(role: AppRole): string {
   if (role === "ADMIN") return "/dashboard/admin";
-  if (role === "SELLER") return "/dashboard/projects";
-  return "/dashboard/purchases";
+  // After login/register, let the user choose sell or browse
+  return "/welcome";
 }

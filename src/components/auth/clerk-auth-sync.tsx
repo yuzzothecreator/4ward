@@ -6,8 +6,8 @@ import { useAppStore } from "@/store/use-app-store";
 import { clearAdminToken, ensureAdminSession } from "@/lib/admin-session";
 
 /**
- * Keeps the Zustand profile in sync with the live Clerk session
- * so nav/profile stop showing "Log in" after a successful sign-in.
+ * Keeps Zustand profile + Supabase/Postgres User in sync with Clerk.
+ * One Clerk account → one DB row (linked by email + real clerkId).
  */
 export function ClerkAuthSync() {
   const { isLoaded, isSignedIn } = useAuth();
@@ -15,7 +15,9 @@ export function ClerkAuthSync() {
   const storeUser = useAppStore((s) => s.user);
   const signIn = useAppStore((s) => s.signIn);
   const signOut = useAppStore((s) => s.signOut);
+  const setRole = useAppStore((s) => s.setRole);
   const lastSyncedEmail = useRef<string | null>(null);
+  const syncing = useRef(false);
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -34,15 +36,48 @@ export function ClerkAuthSync() {
         email.split("@")[0] ||
         "User";
 
-      // Only rewrite the store when session identity changes
-      if (!storeUser || storeUser.email !== email) {
+      const needsLocal =
+        !storeUser || storeUser.email !== email || lastSyncedEmail.current !== email;
+
+      if (needsLocal) {
         const user = signIn({ email, name });
         lastSyncedEmail.current = email;
         void (async () => {
-          if (user.role === "ADMIN") {
-            await ensureAdminSession(user);
-          } else {
-            clearAdminToken();
+          if (syncing.current) return;
+          syncing.current = true;
+          try {
+            // Link Clerk → single Postgres user (no duplicate local_ row)
+            const res = await fetch("/api/users/sync", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({}),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (res.ok && data.user?.role) {
+              setRole(data.user.role);
+            }
+            if ((data.user?.role || user.role) === "ADMIN") {
+              await ensureAdminSession({
+                email,
+                name: data.user?.name || name,
+                username: data.user?.username || user.username,
+                university: data.user?.university || user.university,
+              });
+            } else {
+              clearAdminToken();
+            }
+          } catch {
+            if (user.role === "ADMIN") {
+              try {
+                await ensureAdminSession(user);
+              } catch {
+                /* ignore */
+              }
+            } else {
+              clearAdminToken();
+            }
+          } finally {
+            syncing.current = false;
           }
         })();
       } else {
@@ -51,12 +86,11 @@ export function ClerkAuthSync() {
       return;
     }
 
-    // Clerk session ended — clear local profile so UI shows Log in again
     if (lastSyncedEmail.current || storeUser) {
       lastSyncedEmail.current = null;
       signOut();
     }
-  }, [isLoaded, isSignedIn, clerkUser, storeUser, signIn, signOut]);
+  }, [isLoaded, isSignedIn, clerkUser, storeUser, signIn, signOut, setRole]);
 
   return null;
 }

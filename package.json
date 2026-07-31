@@ -12,7 +12,8 @@
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
     "db:apply": "node scripts/apply-schema.js",
-    "health": "node scripts/health-check.js"
+    "health": "node scripts/health-check.js",
+    "admin:bootstrap": "node scripts/admin-bootstrap.js"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.5.22",

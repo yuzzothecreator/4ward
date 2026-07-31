@@ -1,9 +1,9 @@
-import { randomBytes } from "crypto";
 import { NextResponse } from "next/server";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { reviewSchema } from "@/lib/validations";
 import { getPrisma, pingDatabase } from "@/lib/prisma";
 import { ensureProjectByIdOrSlug } from "@/lib/ensure-project";
+import { ensureAppUser } from "@/lib/users";
 import { demoProjects } from "@/lib/demo-data";
 import {
   clientIp,
@@ -15,11 +15,6 @@ import {
 export const dynamic = "force-dynamic";
 
 const clerkEnabled = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
-
-function slugifyUsername(email: string) {
-  const base = email.split("@")[0] || "buyer";
-  return base.replace(/[^a-z0-9_-]/gi, "").toLowerCase().slice(0, 20) || "buyer";
-}
 
 function mapReview(r: {
   id: string;
@@ -188,15 +183,19 @@ export async function POST(req: Request) {
 
     let email = "";
     let name = "";
+    let clerkId: string | null = null;
 
     if (clerkEnabled) {
       const { userId } = await auth();
       if (!userId) {
         return NextResponse.json({ error: "Sign in to leave a review" }, { status: 401 });
       }
+      clerkId = userId;
       const clerkUser = await currentUser();
       email =
-        clerkUser?.emailAddresses?.[0]?.emailAddress?.trim().toLowerCase() || "";
+        clerkUser?.primaryEmailAddress?.emailAddress?.trim().toLowerCase() ||
+        clerkUser?.emailAddresses?.[0]?.emailAddress?.trim().toLowerCase() ||
+        "";
       name =
         [clerkUser?.firstName, clerkUser?.lastName].filter(Boolean).join(" ") ||
         clerkUser?.username ||
@@ -205,6 +204,7 @@ export async function POST(req: Request) {
       email =
         typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
       name = typeof body.name === "string" ? sanitizeText(body.name, 80) : "";
+      clerkId = email ? `local_${email}` : null;
     }
 
     if (!email) {
@@ -249,21 +249,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
 
-    const user = await prisma.user.upsert({
-      where: { email },
-      update: {
-        name: name || undefined,
-      },
-      create: {
-        clerkId: `local_${email}`,
-        name: name || email.split("@")[0] || "Buyer",
-        email,
-        username: `${slugifyUsername(email)}_${randomBytes(2).toString("hex")}`,
-        role: "BUYER",
-        university: "University of Dar es Salaam",
-        avatar: `https://api.dicebear.com/7.x/avataaars/png?seed=${encodeURIComponent(email)}`,
-      },
+    const userResult = await ensureAppUser({
+      email,
+      name: name || undefined,
+      clerkId,
+      minRole: "BUYER",
     });
+    const user = userResult.user;
+    if (!user) {
+      return NextResponse.json(
+        { error: userResult.error || "Could not resolve user" },
+        { status: 503 }
+      );
+    }
 
     if (user.id === project.sellerId) {
       return NextResponse.json(

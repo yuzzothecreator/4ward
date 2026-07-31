@@ -46,6 +46,7 @@ export async function ensureAdminSession(user: {
   name?: string;
   username?: string;
   university?: string;
+  password?: string;
 }) {
   const existing = getAdminToken();
   if (existing) return existing;
@@ -58,6 +59,7 @@ export async function ensureAdminSession(user: {
       name: user.name,
       username: user.username,
       university: user.university,
+      password: user.password,
     }),
   });
   const data = await res.json();

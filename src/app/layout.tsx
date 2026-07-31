@@ -53,10 +53,10 @@ export default function RootLayout({
         publishableKey={clerkKey}
         signInUrl="/sign-in"
         signUpUrl="/sign-up"
-        signInForceRedirectUrl="/dashboard"
-        signInFallbackRedirectUrl="/dashboard"
-        signUpForceRedirectUrl="/sell"
-        signUpFallbackRedirectUrl="/sell"
+        signInForceRedirectUrl="/welcome"
+        signInFallbackRedirectUrl="/welcome"
+        signUpForceRedirectUrl="/welcome"
+        signUpFallbackRedirectUrl="/welcome"
       >
         {content}
       </ClerkProvider>
