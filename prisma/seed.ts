@@ -10,32 +10,44 @@ async function main() {
 
   const seller = await prisma.user.upsert({
     where: { email: "amina@example.com" },
-    update: {},
+    update: {
+      name: "Amina Juma",
+      username: "aminajuma",
+      university: "UDSM",
+      bio: "Full-stack developer & CS student at UDSM.",
+      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=AminaJuma",
+    },
     create: {
       clerkId: "demo_clerk_amina",
-      name: "Amina Okello",
+      name: "Amina Juma",
       email: "amina@example.com",
-      username: "aminaokello",
+      username: "aminajuma",
       role: "SELLER",
-      university: "University of Nairobi",
-      bio: "Full-stack developer & CS student.",
+      university: "UDSM",
+      bio: "Full-stack developer & CS student at UDSM.",
       skills: ["Next.js", "TypeScript", "Node.js"],
       isApproved: true,
-      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Amina",
+      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=AminaJuma",
     },
   });
 
   await prisma.project.upsert({
-    where: { slug: "campusconnect-student-social-network" },
-    update: {},
-    create: {
-      title: "CampusConnect — Student Social Network",
-      slug: "campusconnect-student-social-network",
+    where: { slug: "darlink-campus-social-network" },
+    update: {
+      title: "DarLink — Campus Social Network",
       description:
-        "A full-stack social networking platform built for university students.",
+        "A full-stack social networking platform built for Tanzanian university students.",
+      shortDescription: "Campus social network with real-time chat.",
+      price: 125000,
+    },
+    create: {
+      title: "DarLink — Campus Social Network",
+      slug: "darlink-campus-social-network",
+      description:
+        "A full-stack social networking platform built for Tanzanian university students.",
       shortDescription: "Campus social network with real-time chat.",
       category: "WEB_APPLICATIONS",
-      price: 49,
+      price: 125000,
       pricingType: "PAID",
       license: "SOURCE_CODE",
       status: "PUBLISHED",

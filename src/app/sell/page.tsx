@@ -189,7 +189,7 @@ function SellForm() {
                 <Input
                   id="title"
                   className="mt-1.5"
-                  placeholder="CampusConnect Social Network"
+                  placeholder="DarLink Campus Social Network"
                   {...register("title")}
                 />
                 {errors.title && (

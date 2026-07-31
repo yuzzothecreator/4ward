@@ -22,8 +22,28 @@ export const metadata: Metadata = {
     "4ward helps students and developers sell, showcase, and monetize software projects. The marketplace for academic and personal digital products.",
   keywords: ["marketplace", "student projects", "sell code", "SaaS", "developers"],
   icons: {
-    icon: "/logo-mark.png",
-    apple: "/logo-mark.png",
+    icon: [
+      { url: "/favicon.ico?v=5", sizes: "any" },
+      {
+        url: "/icon-light.png?v=5",
+        type: "image/png",
+        media: "(prefers-color-scheme: light)",
+      },
+      {
+        url: "/icon-dark.png?v=5",
+        type: "image/png",
+        media: "(prefers-color-scheme: dark)",
+      },
+      { url: "/favicon-32.png?v=5", type: "image/png", sizes: "32x32" },
+    ],
+    apple: [
+      {
+        url: "/apple-touch-icon.png?v=5",
+        sizes: "180x180",
+        type: "image/png",
+      },
+    ],
+    shortcut: "/favicon.ico?v=5",
   },
 };
 

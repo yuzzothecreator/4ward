@@ -8,50 +8,98 @@ type BrandLogoProps = {
   className?: string;
   /** Compact for navbar; larger for footer / auth */
   size?: "sm" | "md" | "lg";
-  priority?: boolean;
   /** Hide the wordmark text (icon only) */
   iconOnly?: boolean;
 };
 
 const SIZES = {
-  sm: { icon: 28, text: "text-[15px]" },
-  md: { icon: 36, text: "text-lg" },
-  lg: { icon: 48, text: "text-2xl" },
+  sm: {
+    px: 32,
+    mark: "h-7 w-7 sm:h-8 sm:w-8",
+    gap: "gap-1.5 sm:gap-2",
+    title: "text-sm sm:text-[15px]",
+    tagline: "hidden" as const,
+  },
+  md: {
+    px: 40,
+    mark: "h-9 w-9 sm:h-10 sm:w-10",
+    gap: "gap-2 sm:gap-2.5",
+    title: "text-base sm:text-lg",
+    tagline: "mt-0.5 text-[9px] sm:text-[10px]",
+  },
+  lg: {
+    px: 56,
+    mark: "h-11 w-11 sm:h-12 sm:w-12 md:h-14 md:w-14",
+    gap: "gap-2.5 sm:gap-3",
+    title: "text-xl sm:text-2xl",
+    tagline: "mt-1 text-[10px] sm:text-xs",
+  },
 } as const;
+
+/**
+ * Solid brand mark using project primary blues at full opacity:
+ * light #2563eb · dark #3b82f6
+ */
+function BrandMark({ className, px }: { className?: string; px: number }) {
+  return (
+    <span className={cn("relative inline-block shrink-0", className)}>
+      <Image
+        src="/logo-mark.png?v=5"
+        alt=""
+        width={px}
+        height={px}
+        className="h-full w-full object-contain dark:hidden"
+        priority
+        unoptimized
+      />
+      <Image
+        src="/logo-mark-dark.png?v=5"
+        alt=""
+        width={px}
+        height={px}
+        className="hidden h-full w-full object-contain dark:block"
+        priority
+        unoptimized
+      />
+    </span>
+  );
+}
 
 /** Official 4ward mark + wordmark */
 export function BrandLogo({
   href = "/",
   className,
   size = "sm",
-  priority = false,
   iconOnly = false,
 }: BrandLogoProps) {
   const dim = SIZES[size];
   const content = (
-    <span className={cn("inline-flex items-center gap-2", className)}>
-      <Image
-        src="/logo-mark.png?v=3"
-        alt=""
-        width={dim.icon}
-        height={dim.icon}
-        priority={priority}
-        unoptimized
-        className="h-auto w-auto object-contain"
-        style={{ width: dim.icon, height: dim.icon }}
-      />
+    <span
+      className={cn(
+        "inline-flex max-w-full items-center",
+        dim.gap,
+        className
+      )}
+    >
+      <BrandMark className={dim.mark} px={dim.px} />
       {!iconOnly ? (
-        <span className="inline-flex flex-col leading-none">
+        <span className="inline-flex min-w-0 flex-col leading-none">
           <span
             className={cn(
               "font-semibold tracking-tight text-foreground",
-              dim.text
+              dim.title
             )}
           >
-            <span className="text-primary">4</span>ward
+            <span className="text-primary">4</span>
+            <span className="text-foreground">ward</span>
           </span>
-          {size !== "sm" ? (
-            <span className="mt-0.5 text-[10px] font-normal tracking-wide text-muted-foreground sm:text-[11px]">
+          {dim.tagline !== "hidden" ? (
+            <span
+              className={cn(
+                "font-normal tracking-wide text-muted-foreground",
+                dim.tagline
+              )}
+            >
               Code. Projects.{" "}
               <span className="text-accent">Progress.</span>
             </span>
@@ -68,7 +116,11 @@ export function BrandLogo({
   }
 
   return (
-    <Link href={href} className="inline-flex shrink-0 items-center" aria-label="4ward home">
+    <Link
+      href={href}
+      className="inline-flex max-w-full shrink-0 items-center"
+      aria-label="4ward home"
+    >
       {content}
     </Link>
   );

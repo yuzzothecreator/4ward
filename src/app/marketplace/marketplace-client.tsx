@@ -47,12 +47,7 @@ export default function MarketplacePage() {
     });
   }, [q, category, tech, university, minRating, priceRange, listings, getCatalog]);
 
-  const universities = [
-    "University of Nairobi",
-    "Strathmore University",
-    "Jomo Kenyatta University",
-    "Kenyatta University",
-  ];
+  const universities = ["UDSM", "DIT", "SUA", "ARU"];
 
   return (
     <div className="min-h-screen bg-background">

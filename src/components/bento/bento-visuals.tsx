@@ -292,10 +292,10 @@ export function SecurityVisual() {
 export function MarketplaceVisual() {
   const reduce = useReducedMotion() ?? false;
   const cards = [
-    { title: "CampusConnect", price: "$49", color: "from-blue-500/40 to-cyan-500/20" },
-    { title: "StudyBuddy AI", price: "$39", color: "from-violet-500/30 to-blue-500/20" },
-    { title: "SecureVault", price: "$79", color: "from-emerald-500/30 to-teal-500/20" },
-    { title: "AgriSense", price: "$59", color: "from-amber-500/30 to-orange-500/20" },
+    { title: "DarLink", price: "TZS 125k", color: "from-blue-500/40 to-cyan-500/20" },
+    { title: "StudyBuddy AI", price: "TZS 95k", color: "from-violet-500/30 to-blue-500/20" },
+    { title: "SecureVault", price: "TZS 195k", color: "from-emerald-500/30 to-teal-500/20" },
+    { title: "AgriSense", price: "TZS 150k", color: "from-amber-500/30 to-orange-500/20" },
   ];
 
   return (
@@ -364,7 +364,7 @@ export function NotificationsVisual() {
               <div>
                 <p className="text-xs font-semibold text-foreground">New sale</p>
                 <p className="mt-0.5 text-[11px] leading-snug text-muted">
-                  CampusConnect purchased — +$49.00
+                  DarLink purchased — +TZS 125,000
                 </p>
               </div>
             </div>
