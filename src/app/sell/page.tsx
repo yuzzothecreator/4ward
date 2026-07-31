@@ -223,7 +223,10 @@ function SellForm() {
       <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
         <h1 className="text-3xl font-bold text-foreground">Sell your project</h1>
         <p className="mt-2 text-muted">
-          Upload source code, docs, and demos. Publish to the marketplace and get paid in TZS.
+          Choose <span className="text-foreground">Campus</span> for student /
+          presentation listings, or <span className="text-foreground">Market</span>{" "}
+          for commercial products (verified sellers only). Upload source, set a
+          license, publish, and get paid in TZS.
         </p>
 
         <form className="mt-8 space-y-6">

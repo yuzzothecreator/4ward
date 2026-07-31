@@ -20,30 +20,32 @@ import { easeOutExpo } from "@/lib/motion";
 const rails = [
   {
     fig: "1.0",
-    label: "Sell",
+    label: "Campus",
     title: "List after you present",
-    copy: "Upload source, docs, and demos the same week you defend. We review once, then publish to the shelf.",
+    copy: "Upload source, docs, and demos for student buyers. Campus pricing, same-university exclusivity, Educational or Source licenses.",
     mock: <SellRailMock />,
   },
   {
     fig: "2.0",
-    label: "Discover",
-    title: "Buy ready-made systems",
-    copy: "Browse campus projects by stack, university, and license — real repos, not vaporware decks.",
+    label: "Market",
+    title: "Sell real commercial products",
+    copy: "Verified sellers list production-ready systems for companies and developers — commercial licenses, higher TZS prices, no campus lock.",
     mock: <DiscoverRailMock />,
   },
   {
     fig: "3.0",
     label: "Earn",
-    title: "Get paid on every download",
-    copy: "Stripe today. African rails next. You keep the majority; we handle delivery and licenses.",
+    title: "Get paid in TZS on every sale",
+    copy: "Mobile money via ClickPesa today. You keep the majority; we handle delivery, licenses, and payouts.",
     mock: <EarnRailMock />,
   },
 ];
 
 export default function HomePage() {
-  const featured = demoProjects.slice(0, 3);
-  const spotlight = demoProjects[0];
+  const campusFeatured = demoProjects.filter((p) => p.listingType === "CAMPUS").slice(0, 2);
+  const marketFeatured = demoProjects.filter((p) => p.listingType === "MARKET").slice(0, 1);
+  const featured = [...campusFeatured, ...marketFeatured];
+  const spotlight = demoProjects.find((p) => p.listingType === "CAMPUS") || demoProjects[0];
 
   return (
     <div className="overflow-x-hidden bg-background">
@@ -58,7 +60,7 @@ export default function HomePage() {
             transition={{ duration: 0.5, ease: easeOutExpo }}
             className="text-sm text-muted"
           >
-            The student product marketplace
+            Campus projects · Commercial products · Tanzania
           </motion.p>
           <motion.h1
             initial={{ opacity: 0, y: 16 }}
@@ -66,8 +68,8 @@ export default function HomePage() {
             transition={{ duration: 0.6, delay: 0.05, ease: easeOutExpo }}
             className="font-display mt-4 text-4xl font-semibold tracking-tight text-foreground sm:text-5xl md:text-[3.5rem] md:leading-[1.1]"
           >
-            Turn finished campus projects
-            <br className="hidden sm:block" /> into products people buy
+            Turn finished work into
+            <br className="hidden sm:block" /> products people buy
           </motion.h1>
           <motion.p
             initial={{ opacity: 0, y: 16 }}
@@ -75,8 +77,11 @@ export default function HomePage() {
             transition={{ duration: 0.6, delay: 0.1, ease: easeOutExpo }}
             className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-muted sm:text-lg"
           >
-            Purpose-built for students and developers. Sell source, docs, and demos
-            after presentation — with the craft of a modern product system.
+            Two shelves, one marketplace:{" "}
+            <span className="text-foreground">Campus</span> for student
+            presentations, and{" "}
+            <span className="text-foreground">Market</span> for real commercial
+            systems — with clear licenses and TZS payouts.
           </motion.p>
           <motion.div
             initial={{ opacity: 0, y: 16 }}
@@ -84,15 +89,20 @@ export default function HomePage() {
             transition={{ duration: 0.6, delay: 0.15, ease: easeOutExpo }}
             className="mt-8 flex flex-wrap items-center justify-center gap-3"
           >
-            <Link href="/marketplace">
+            <Link href="/marketplace?type=CAMPUS">
               <Button size="lg">
-                Explore Projects
+                Browse Campus
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
-            <Link href="/sign-up">
+            <Link href="/marketplace?type=MARKET">
               <Button size="lg" variant="secondary">
-                Sell Your Project
+                Browse Market
+              </Button>
+            </Link>
+            <Link href="/sell">
+              <Button size="lg" variant="outline">
+                Sell a project
               </Button>
             </Link>
           </motion.div>
@@ -117,9 +127,9 @@ export default function HomePage() {
       {/* Product rails — Linear Intake / Plan / Build pattern */}
       <section className="border-b border-border">
         <div className="mx-auto max-w-5xl px-4 py-20 sm:px-6 sm:py-28">
-          <p className="text-sm text-muted">A new species of campus marketplace</p>
+          <p className="text-sm text-muted">One marketplace, two clear paths</p>
           <h2 className="font-display mt-3 max-w-2xl text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-            Purpose-built for shipping student work into the real world.
+            Campus for presentations. Market for real products.
           </h2>
         </div>
 
@@ -267,9 +277,9 @@ export default function HomePage() {
       <section className="border-b border-border">
         <div className="mx-auto max-w-3xl px-4 py-20 text-center sm:px-6 sm:py-24">
           <blockquote className="font-display text-2xl font-medium leading-snug tracking-tight text-foreground sm:text-3xl">
-            “You’ll probably build a better product — just because your campus work finally has a real shelf.”
+            “Campus work gets a student shelf. Commercial systems get a real market — same platform, clear rules.”
           </blockquote>
-          <p className="mt-6 text-sm text-muted">Built for student creators on 4ward</p>
+          <p className="mt-6 text-sm text-muted">Built for students, developers, and companies on 4ward</p>
         </div>
       </section>
 
@@ -277,20 +287,21 @@ export default function HomePage() {
       <section className="border-b border-border px-4 py-20 sm:px-6 sm:py-28">
         <div className="mx-auto max-w-2xl text-center">
           <h2 className="font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-            Built for campus builders.
+            Built for campus builders
             <br />
-            Available today.
+            and commercial creators.
           </h2>
           <p className="mx-auto mt-4 max-w-md text-muted">
-            List after you present. Keep ownership. Get paid when someone downloads your work.
+            List Campus after you present — or get verified and sell Market
+            products to companies. Clear licenses. Paid in TZS.
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-            <Link href="/sign-up">
+            <Link href="/sell">
               <Button size="lg">Start selling</Button>
             </Link>
             <Link href="/marketplace">
               <Button size="lg" variant="secondary">
-                Explore projects
+                Explore marketplace
               </Button>
             </Link>
           </div>

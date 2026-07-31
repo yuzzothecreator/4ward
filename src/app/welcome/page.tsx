@@ -88,13 +88,19 @@ function WelcomeInner() {
             </div>
             <CardTitle className="text-lg">Browse marketplace</CardTitle>
             <CardDescription>
-              Discover student projects, buy source code, and download instantly.
+              Campus projects for students, or Market products for companies —
+              with clear licenses and instant download.
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <Link href="/marketplace">
+          <CardContent className="space-y-2">
+            <Link href="/marketplace?type=CAMPUS">
+              <Button className="w-full" variant="secondary">
+                Browse Campus
+              </Button>
+            </Link>
+            <Link href="/marketplace?type=MARKET">
               <Button className="w-full">
-                Explore projects
+                Browse Market
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
@@ -108,7 +114,8 @@ function WelcomeInner() {
             </div>
             <CardTitle className="text-lg">Start selling</CardTitle>
             <CardDescription>
-              List your project, set a price in TZS, and reach buyers across Tanzania.
+              Campus listings for anyone. Market / commercial products require
+              verification first.
             </CardDescription>
           </CardHeader>
           <CardContent>

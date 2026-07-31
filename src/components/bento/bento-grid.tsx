@@ -28,13 +28,15 @@ const features = [
     icon: Users,
   },
   {
-    title: "Secure delivery",
-    description: "Signed downloads, license checks, and verified payments by default.",
+    title: "Verified Market sellers",
+    description:
+      "Commercial Market listings require blue-tick verification — trust for company buyers.",
     icon: ShieldCheck,
   },
   {
-    title: "Campus catalog",
-    description: "Discover student-built systems by stack, university, and craft.",
+    title: "Campus & Market shelves",
+    description:
+      "Student Campus projects and commercial Market products — clear badges so buyers never mix them up.",
     icon: Store,
   },
   {

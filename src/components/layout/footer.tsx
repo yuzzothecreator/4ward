@@ -50,7 +50,8 @@ export function Footer() {
           <div className="lg:col-span-2">
             <BrandLogo size="md" />
             <p className="mt-4 max-w-xs text-[13px] leading-relaxed text-muted">
-              The product system for campus creators. Sell source, docs, and demos after presentation.
+              Campus projects for students. Market products for companies.
+              Clear licenses. Paid in TZS.
             </p>
           </div>
 

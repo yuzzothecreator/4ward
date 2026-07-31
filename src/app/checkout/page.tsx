@@ -42,6 +42,7 @@ function CheckoutInner() {
   const [methods, setMethods] = useState<MethodsResponse["methods"] | null>(null);
   const [method, setMethod] = useState<PayMethod>("clickpesa");
   const [phone, setPhone] = useState("");
+  const [companyName, setCompanyName] = useState("");
   const [loading, setLoading] = useState(false);
   const [polling, setPolling] = useState(false);
   const [orderReference, setOrderReference] = useState<string | null>(null);
@@ -186,6 +187,7 @@ function CheckoutInner() {
           phone,
           email: user?.email,
           university: user?.university,
+          companyName: commercial ? companyName.trim() || undefined : undefined,
         }),
       });
       const data = await res.json();
@@ -223,6 +225,7 @@ function CheckoutInner() {
           title: project.title,
           price: project.price,
           university: user.university,
+          companyName: commercial ? companyName.trim() || undefined : undefined,
         }),
       });
       const data = await res.json();
@@ -285,10 +288,27 @@ function CheckoutInner() {
           </div>
 
           {commercial ? (
-            <p className="text-xs text-amber-800 dark:text-amber-200/90">
-              Market listing — open to any buyer. Commercial license terms apply;
-              no campus exclusivity lock.
-            </p>
+            <div className="space-y-3 rounded-xl border border-amber-500/35 bg-amber-500/10 p-3">
+              <p className="text-xs text-amber-900 dark:text-amber-100">
+                Market listing — open to any buyer. Commercial license terms
+                apply; no campus exclusivity lock.
+              </p>
+              <div>
+                <Label htmlFor="companyName" className="text-xs">
+                  Company / organization (optional)
+                </Label>
+                <Input
+                  id="companyName"
+                  className="mt-1.5"
+                  placeholder="e.g. Acme Ltd"
+                  value={companyName}
+                  onChange={(e) => setCompanyName(e.target.value)}
+                />
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Helps sellers issue commercial invoices for company purchases.
+                </p>
+              </div>
+            </div>
           ) : campusBlocked && campusLock?.message ? (
             <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-100">
               <p>{campusLock.message}</p>

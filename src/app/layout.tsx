@@ -15,12 +15,20 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "4ward — Turn Your Projects Into Digital Products",
+    default: "4ward — Campus projects & commercial products",
     template: "%s | 4ward",
   },
   description:
-    "4ward helps students and developers sell, showcase, and monetize software projects. The marketplace for academic and personal digital products.",
-  keywords: ["marketplace", "student projects", "sell code", "SaaS", "developers"],
+    "4ward is a Tanzania marketplace for Campus (student) projects and Market (commercial) products. Clear licenses, verified sellers, paid in TZS.",
+  keywords: [
+    "marketplace",
+    "student projects",
+    "commercial software",
+    "Tanzania",
+    "sell code",
+    "UDSM",
+    "TZS",
+  ],
   icons: {
     icon: [
       { url: "/favicon.ico?v=5", sizes: "any" },
