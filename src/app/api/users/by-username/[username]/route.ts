@@ -62,6 +62,8 @@ export async function GET(
               images: true,
               demoUrl: true,
               githubRepo: true,
+              setupGuide: true,
+              documentation: true,
               technologyStack: true,
               views: true,
               downloads: true,

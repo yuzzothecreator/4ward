@@ -1,13 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { VerifiedTick } from "@/components/verified-tick";
 import { useAppStore } from "@/store/use-app-store";
@@ -19,6 +25,8 @@ import { isSellerProfileReady } from "@/lib/seller-profile";
 export default function ProfilePage() {
   const user = useAppStore((s) => s.user);
   const setVerified = useAppStore((s) => s.setVerified);
+  const hydratedFor = useRef<string | null>(null);
+
   const [skills, setSkills] = useState<string[]>([]);
   const [skillInput, setSkillInput] = useState("");
   const [saved, setSaved] = useState(false);
@@ -32,20 +40,99 @@ export default function ProfilePage() {
   const [githubUrl, setGithubUrl] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
+  const [loadingProfile, setLoadingProfile] = useState(false);
   const verified = Boolean(user?.verified);
 
+  function applyProfile(data: {
+    name?: string;
+    username?: string;
+    university?: string | null;
+    bio?: string | null;
+    supportNote?: string | null;
+    whatsapp?: string | null;
+    website?: string | null;
+    githubUrl?: string | null;
+    skills?: string[];
+  }) {
+    if (data.name) setName(data.name);
+    if (data.username) setUsername(data.username);
+    setUniversity(data.university || "");
+    setBio(data.bio || "");
+    setSupportNote(data.supportNote || "");
+    setWhatsapp(data.whatsapp || "");
+    setWebsite(data.website || "");
+    setGithubUrl(data.githubUrl || "");
+    setSkills(data.skills?.length ? data.skills : []);
+  }
+
+  // Hydrate once per signed-in email — do not reset while typing when verification refreshes
   useEffect(() => {
-    if (!user) return;
-    setName(user.name);
-    setUsername(user.username);
-    setUniversity(user.university);
-    setBio(user.bio || "");
-    setSupportNote(user.supportNote || "");
-    setWhatsapp(user.whatsapp || "");
-    setWebsite(user.website || "");
-    setGithubUrl(user.githubUrl || "");
-    setSkills(user.skills?.length ? user.skills : []);
-  }, [user]);
+    if (!user?.email) return;
+    if (hydratedFor.current === user.email) return;
+    hydratedFor.current = user.email;
+
+    applyProfile({
+      name: user.name,
+      username: user.username,
+      university: user.university,
+      bio: user.bio,
+      supportNote: user.supportNote,
+      whatsapp: user.whatsapp,
+      website: user.website,
+      githubUrl: user.githubUrl,
+      skills: user.skills,
+    });
+
+    let cancelled = false;
+    setLoadingProfile(true);
+    void fetch(
+      `/api/users/by-username/${encodeURIComponent(user.username)}`
+    )
+      .then(async (r) => {
+        if (!r.ok) return null;
+        return r.json();
+      })
+      .then((data) => {
+        if (cancelled || !data?.user) return;
+        applyProfile({
+          name: data.user.name,
+          username: data.user.username,
+          university: data.user.university,
+          bio: data.user.bio,
+          supportNote: data.user.supportNote,
+          whatsapp: data.user.whatsapp,
+          website: data.user.website,
+          githubUrl: data.user.githubUrl,
+          skills: data.user.skills,
+        });
+        useAppStore.setState({
+          user: {
+            ...user,
+            name: data.user.name || user.name,
+            username: data.user.username || user.username,
+            university: data.user.university || user.university,
+            bio: data.user.bio || "",
+            supportNote: data.user.supportNote || "",
+            whatsapp: data.user.whatsapp || "",
+            website: data.user.website || "",
+            githubUrl: data.user.githubUrl || "",
+            skills: data.user.skills || [],
+            verified: Boolean(data.user.verified ?? user.verified),
+          },
+        });
+      })
+      .catch(() => {
+        /* store values already applied */
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingProfile(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- hydrate once per email
+  }, [user?.email]);
 
   useEffect(() => {
     if (!user?.email) return;
@@ -67,6 +154,22 @@ export default function ProfilePage() {
     if (!user) return;
     setSaving(true);
     setSaveError("");
+
+    const nextName = name.trim();
+    const nextUsername = username.trim().toLowerCase();
+    if (nextName.length < 2) {
+      setSaveError("Name must be at least 2 characters");
+      setSaving(false);
+      return;
+    }
+    if (!/^[a-z0-9_-]{3,30}$/.test(nextUsername)) {
+      setSaveError(
+        "Username must be 3–30 characters: lowercase letters, numbers, _ or -"
+      );
+      setSaving(false);
+      return;
+    }
+
     try {
       const res = await fetch("/api/users/sync", {
         method: "POST",
@@ -74,8 +177,8 @@ export default function ProfilePage() {
         credentials: "same-origin",
         body: JSON.stringify({
           email: user.email,
-          name: name.trim(),
-          username: username.trim(),
+          name: nextName,
+          username: nextUsername,
           university: canonicalizeInstitution(university) || university.trim(),
           bio: bio.trim(),
           supportNote: supportNote.trim(),
@@ -83,6 +186,7 @@ export default function ProfilePage() {
           website: website.trim(),
           githubUrl: githubUrl.trim(),
           skills,
+          updateProfile: true,
         }),
       });
       const data = await res.json();
@@ -90,26 +194,28 @@ export default function ProfilePage() {
         setSaveError(data.error || "Could not save profile");
         return;
       }
+
       const savedUni =
         canonicalizeInstitution(data.user?.university || university) ||
         university.trim();
-      useAppStore.setState({
-        user: {
-          ...user,
-          name: data.user?.name || name.trim(),
-          username: data.user?.username || username.trim(),
-          university: savedUni,
-          bio: data.user?.bio ?? bio.trim(),
-          supportNote: data.user?.supportNote ?? supportNote.trim(),
-          whatsapp: data.user?.whatsapp ?? whatsapp.trim(),
-          website: data.user?.website ?? website.trim(),
-          githubUrl: data.user?.githubUrl ?? githubUrl.trim(),
-          skills: data.user?.skills ?? skills,
-          verified: Boolean(data.user?.verified ?? user.verified),
-          role: data.user?.role || user.role,
-        },
-      });
-      setUniversity(savedUni);
+
+      const nextUser = {
+        ...user,
+        name: data.user?.name || nextName,
+        username: data.user?.username || nextUsername,
+        university: savedUni,
+        bio: data.user?.bio ?? bio.trim(),
+        supportNote: data.user?.supportNote ?? supportNote.trim(),
+        whatsapp: data.user?.whatsapp ?? whatsapp.trim(),
+        website: data.user?.website ?? website.trim(),
+        githubUrl: data.user?.githubUrl ?? githubUrl.trim(),
+        skills: data.user?.skills ?? skills,
+        verified: Boolean(data.user?.verified ?? user.verified),
+        role: data.user?.role || user.role,
+      };
+
+      useAppStore.setState({ user: nextUser });
+      applyProfile(nextUser);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch {
@@ -142,6 +248,10 @@ export default function ProfilePage() {
         </p>
       </div>
 
+      {loadingProfile ? (
+        <p className="text-xs text-muted-foreground">Loading saved profile…</p>
+      ) : null}
+
       {!sellerReady ? (
         <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-950 dark:text-amber-100">
           <p className="font-medium">Complete seller help details</p>
@@ -164,17 +274,17 @@ export default function ProfilePage() {
                 src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(user.email)}`}
               />
               <AvatarFallback>
-                {user.name.slice(0, 2).toUpperCase()}
+                {(name || user.name).slice(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>
             <div>
               <CardTitle className="flex items-center gap-1.5">
-                {user.name}
+                {name || user.name}
                 {verified ? <VerifiedTick /> : null}
               </CardTitle>
               <p className="text-sm text-muted-foreground">{user.email}</p>
               <p className="text-sm text-muted-foreground">
-                4ward.com/{user.username}
+                4ward.com/{username || user.username}
               </p>
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <Badge variant="secondary">{ROLE_LABELS[user.role]}</Badge>
@@ -196,19 +306,21 @@ export default function ProfilePage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <Label>Name</Label>
+            <Label htmlFor="name">Name</Label>
             <Input
+              id="name"
               className="mt-1.5"
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
           </div>
           <div>
-            <Label>Username</Label>
+            <Label htmlFor="username">Username</Label>
             <Input
+              id="username"
               className="mt-1.5"
               value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              onChange={(e) => setUsername(e.target.value.toLowerCase())}
             />
           </div>
           <div>
@@ -318,8 +430,9 @@ export default function ProfilePage() {
             </div>
           </div>
           <div>
-            <Label>Website</Label>
+            <Label htmlFor="website">Website</Label>
             <Input
+              id="website"
               className="mt-1.5"
               placeholder="https://"
               value={website}
@@ -327,8 +440,9 @@ export default function ProfilePage() {
             />
           </div>
           <div>
-            <Label>GitHub</Label>
+            <Label htmlFor="githubUrl">GitHub</Label>
             <Input
+              id="githubUrl"
               className="mt-1.5"
               placeholder="https://github.com/"
               value={githubUrl}

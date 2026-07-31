@@ -97,6 +97,9 @@ export async function ensureAppUser(input: EnsureAppUserInput) {
         clerkId: clerkIdToSet,
         avatar: input.avatar || undefined,
         university: input.university?.trim() || undefined,
+        ...(input.username?.trim()
+          ? { username: input.username.trim().toLowerCase() }
+          : {}),
         role: elevateRole(existingByEmail.role as AppRole, role),
         ...(isAdminEmail(email)
           ? { role: "SUPER_ADMIN" as AppRole, isApproved: true }
@@ -119,6 +122,9 @@ export async function ensureAppUser(input: EnsureAppUserInput) {
           name: input.name?.trim() || undefined,
           avatar: input.avatar || undefined,
           university: input.university?.trim() || undefined,
+          ...(input.username?.trim()
+            ? { username: input.username.trim().toLowerCase() }
+            : {}),
           role: elevateRole(existingByClerk.role as AppRole, role),
         },
       });

@@ -6,6 +6,7 @@ import {
   requireRateLimit,
   requireSameOrigin,
   sanitizeText,
+  sanitizeMultiline,
 } from "@/lib/security";
 import { canonicalizeInstitution } from "@/lib/tanzania-institutions";
 
@@ -44,11 +45,16 @@ export async function POST(req: Request) {
         clerkUser?.primaryEmailAddress?.emailAddress?.trim().toLowerCase() ||
         clerkUser?.emailAddresses?.[0]?.emailAddress?.trim().toLowerCase() ||
         "";
-      name =
-        [clerkUser?.firstName, clerkUser?.lastName].filter(Boolean).join(" ").trim() ||
-        clerkUser?.fullName ||
-        clerkUser?.username ||
-        "";
+      const bodyName = sanitizeText(body.name || "", 80);
+      // Only apply a display name on explicit profile saves — Clerk login sync
+      // must not overwrite a name the user set in Settings.
+      name = body.updateProfile
+        ? bodyName ||
+          [clerkUser?.firstName, clerkUser?.lastName].filter(Boolean).join(" ").trim() ||
+          clerkUser?.fullName ||
+          clerkUser?.username ||
+          ""
+        : "";
       clerkId = userId;
       avatar = clerkUser?.imageUrl || null;
       const metaRole = clerkUser?.publicMetadata?.role;
@@ -91,11 +97,17 @@ export async function POST(req: Request) {
       avatar,
       role,
       minRole: intent,
-      university: (() => {
-        const raw = sanitizeText(body.university || "", 120);
-        return canonicalizeInstitution(raw) || raw || undefined;
-      })(),
-      username: sanitizeText(body.username || "", 30) || undefined,
+      university:
+        body.updateProfile === true
+          ? (() => {
+              const raw = sanitizeText(body.university || "", 120);
+              return canonicalizeInstitution(raw) || raw || undefined;
+            })()
+          : undefined,
+      username:
+        body.updateProfile === true
+          ? sanitizeText(body.username || "", 30) || undefined
+          : undefined,
     });
 
     if (!result.user) {
@@ -111,21 +123,31 @@ export async function POST(req: Request) {
     // Seller-facing profile fields (bio, support, links)
     let profileUser = result.user;
     const bio =
-      typeof body.bio === "string" ? sanitizeText(body.bio, 500) : undefined;
+      typeof body.bio === "string" ? sanitizeMultiline(body.bio, 500) : undefined;
     const supportNote =
       typeof body.supportNote === "string"
-        ? sanitizeText(body.supportNote, 1000)
+        ? sanitizeMultiline(body.supportNote, 1000)
         : undefined;
     const whatsapp =
       typeof body.whatsapp === "string"
         ? sanitizeText(body.whatsapp, 40)
         : undefined;
+    const websiteRaw =
+      typeof body.website === "string" ? body.website.trim() : undefined;
+    const githubRaw =
+      typeof body.githubUrl === "string" ? body.githubUrl.trim() : undefined;
     const website =
-      typeof body.website === "string" ? sanitizeText(body.website, 200) : undefined;
+      websiteRaw === undefined
+        ? undefined
+        : websiteRaw === ""
+          ? ""
+          : sanitizeText(websiteRaw, 200);
     const githubUrl =
-      typeof body.githubUrl === "string"
-        ? sanitizeText(body.githubUrl, 200)
-        : undefined;
+      githubRaw === undefined
+        ? undefined
+        : githubRaw === ""
+          ? ""
+          : sanitizeText(githubRaw, 200);
     const skills = Array.isArray(body.skills)
       ? body.skills
           .filter((s: unknown): s is string => typeof s === "string")
@@ -135,6 +157,7 @@ export async function POST(req: Request) {
       : undefined;
 
     const wantsProfilePatch =
+      body.updateProfile === true ||
       bio !== undefined ||
       supportNote !== undefined ||
       whatsapp !== undefined ||
@@ -146,22 +169,34 @@ export async function POST(req: Request) {
       try {
         const { getPrisma, pingDatabase } = await import("@/lib/prisma");
         const db = await pingDatabase();
-        if (db.ok) {
-          const prisma = await getPrisma();
-          profileUser = await prisma.user.update({
-            where: { id: result.user.id },
-            data: {
-              ...(bio !== undefined ? { bio } : {}),
-              ...(supportNote !== undefined ? { supportNote } : {}),
-              ...(whatsapp !== undefined ? { whatsapp } : {}),
-              ...(website !== undefined ? { website: website || null } : {}),
-              ...(githubUrl !== undefined ? { githubUrl: githubUrl || null } : {}),
-              ...(skills !== undefined ? { skills } : {}),
-            },
-          });
+        if (!db.ok) {
+          return NextResponse.json(
+            { error: db.error || "Database unavailable", demo: true },
+            { status: 503 }
+          );
         }
-      } catch {
-        /* keep ensureAppUser row */
+        const prisma = await getPrisma();
+        profileUser = await prisma.user.update({
+          where: { id: result.user.id },
+          data: {
+            ...(bio !== undefined ? { bio } : {}),
+            ...(supportNote !== undefined ? { supportNote } : {}),
+            ...(whatsapp !== undefined ? { whatsapp: whatsapp || null } : {}),
+            ...(website !== undefined ? { website: website || null } : {}),
+            ...(githubUrl !== undefined ? { githubUrl: githubUrl || null } : {}),
+            ...(skills !== undefined ? { skills } : {}),
+          },
+        });
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : "Could not update profile fields";
+        if (message.toLowerCase().includes("unique") || message.includes("P2002")) {
+          return NextResponse.json(
+            { error: "That username is already taken. Choose another." },
+            { status: 409 }
+          );
+        }
+        return NextResponse.json({ error: message }, { status: 500 });
       }
     }
 
@@ -208,11 +243,13 @@ export async function POST(req: Request) {
       demo: result.demo,
     });
   } catch (err) {
-    return NextResponse.json(
-      {
-        error: err instanceof Error ? err.message : "Sync failed",
-      },
-      { status: 500 }
-    );
+    const message = err instanceof Error ? err.message : "Sync failed";
+    if (message.toLowerCase().includes("unique") || message.includes("P2002")) {
+      return NextResponse.json(
+        { error: "That username is already taken. Choose another." },
+        { status: 409 }
+      );
+    }
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

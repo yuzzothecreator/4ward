@@ -30,8 +30,20 @@ export function sanitizeText(input: unknown, maxLen = 200): string {
   if (typeof input !== "string") return "";
   return input
     .replace(/<[^>]*>/g, "")
-    .replace(/[\u0000-\u001F\u007F]/g, "")
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "")
     .replace(/[<>`'"]/g, "")
+    .trim()
+    .slice(0, maxLen);
+}
+
+/** Preserve newlines for bios / support notes (unlike sanitizeText). */
+export function sanitizeMultiline(input: unknown, maxLen = 2000): string {
+  if (typeof input !== "string") return "";
+  return input
+    .replace(/<[^>]*>/g, "")
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "")
+    .replace(/[<>`'"]/g, "")
+    .replace(/\r\n/g, "\n")
     .trim()
     .slice(0, maxLen);
 }
