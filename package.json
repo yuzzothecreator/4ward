@@ -9,6 +9,8 @@
     "lint": "eslint",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
+    "db:migrate": "prisma migrate deploy",
+    "db:migrate:dev": "prisma migrate dev",
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
     "db:apply": "node scripts/apply-schema.js",

@@ -25,8 +25,14 @@ export async function GET(
 
   const db = await pingDatabase();
 
-  // Demo / offline entitlement (token issued by fulfillPurchase without DB)
+  // Demo / offline entitlement — never in production
   if (!db.ok) {
+    if (process.env.NODE_ENV === "production") {
+      return NextResponse.json(
+        { error: "Database unavailable" },
+        { status: 503 }
+      );
+    }
     if (!token.startsWith("demo_")) {
       return NextResponse.json(
         { error: "Invalid token (database offline)" },

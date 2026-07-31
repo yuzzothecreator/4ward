@@ -1,5 +1,7 @@
-import { createHmac } from "crypto";
+import { createHmac, timingSafeEqual } from "crypto";
 import { getEnvConfig } from "@/lib/env";
+import { isProductionRuntime } from "@/lib/production";
+import { getPrisma, pingDatabase } from "@/lib/prisma";
 
 const CLICKPESA_BASE = "https://api.clickpesa.com/third-parties";
 
@@ -22,11 +24,12 @@ export type PendingMobilePayment = {
   channel?: string;
   clickpesaId?: string;
   message?: string;
+  collectedAmount?: number;
   createdAt: string;
   updatedAt: string;
 };
 
-/** In-memory pending orders (single-node / demo). Prefer DB in production. */
+/** Process-local cache; DB is source of truth across instances. */
 const pendingPayments = new Map<string, PendingMobilePayment>();
 
 let cachedToken: { value: string; expiresAt: number } | null = null;
@@ -59,7 +62,14 @@ export function verifyClickPesaChecksum(
   checksum: string
 ) {
   const expected = createClickPesaChecksum(checksumKey, payload);
-  return expected === checksum;
+  try {
+    const a = Buffer.from(expected, "utf8");
+    const b = Buffer.from(String(checksum), "utf8");
+    if (a.length !== b.length) return false;
+    return timingSafeEqual(a, b);
+  } catch {
+    return false;
+  }
 }
 
 export function isClickPesaConfigured() {
@@ -95,27 +105,164 @@ export function createOrderReference(prefix = "4W") {
   return `${prefix}${stamp}${rand}`.replace(/[^A-Z0-9]/g, "");
 }
 
-export function savePendingPayment(payment: PendingMobilePayment) {
+function rowToPending(row: {
+  orderReference: string;
+  projectId: string;
+  slug: string;
+  title: string;
+  amount: number;
+  phoneNumber: string;
+  buyerEmail: string | null;
+  status: string;
+  channel: string | null;
+  clickpesaId: string | null;
+  message: string | null;
+  collectedAmount: number | null;
+  createdAt: Date;
+  updatedAt: Date;
+}): PendingMobilePayment {
+  return {
+    orderReference: row.orderReference,
+    projectId: row.projectId,
+    slug: row.slug,
+    title: row.title,
+    amount: row.amount,
+    phoneNumber: row.phoneNumber,
+    buyerEmail: row.buyerEmail || undefined,
+    status: row.status as ClickPesaPaymentStatus,
+    channel: row.channel || undefined,
+    clickpesaId: row.clickpesaId || undefined,
+    message: row.message || undefined,
+    collectedAmount: row.collectedAmount ?? undefined,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
+export async function savePendingPayment(payment: PendingMobilePayment) {
   pendingPayments.set(payment.orderReference, payment);
+
+  const db = await pingDatabase();
+  if (!db.ok) {
+    if (isProductionRuntime()) {
+      throw new Error("Database required to start mobile money payments");
+    }
+    return payment;
+  }
+
+  const prisma = await getPrisma();
+  const row = await prisma.pendingPayment.upsert({
+    where: { orderReference: payment.orderReference },
+    create: {
+      orderReference: payment.orderReference,
+      projectId: payment.projectId,
+      slug: payment.slug,
+      title: payment.title,
+      amount: payment.amount,
+      phoneNumber: payment.phoneNumber,
+      buyerEmail: payment.buyerEmail || null,
+      status: payment.status,
+      channel: payment.channel || null,
+      clickpesaId: payment.clickpesaId || null,
+      message: payment.message || null,
+      collectedAmount: payment.collectedAmount ?? null,
+    },
+    update: {
+      projectId: payment.projectId,
+      slug: payment.slug,
+      title: payment.title,
+      amount: payment.amount,
+      phoneNumber: payment.phoneNumber,
+      buyerEmail: payment.buyerEmail || null,
+      status: payment.status,
+      channel: payment.channel || null,
+      clickpesaId: payment.clickpesaId || null,
+      message: payment.message || null,
+      collectedAmount: payment.collectedAmount ?? null,
+    },
+  });
+
+  const mapped = rowToPending(row);
+  pendingPayments.set(mapped.orderReference, mapped);
+  return mapped;
 }
 
-export function getPendingPayment(orderReference: string) {
-  return pendingPayments.get(orderReference) || null;
+export async function getPendingPayment(orderReference: string) {
+  const cached = pendingPayments.get(orderReference);
+  if (cached) return cached;
+
+  const db = await pingDatabase();
+  if (!db.ok) return null;
+
+  const prisma = await getPrisma();
+  const row = await prisma.pendingPayment.findUnique({
+    where: { orderReference },
+  });
+  if (!row) return null;
+
+  const mapped = rowToPending(row);
+  pendingPayments.set(orderReference, mapped);
+  return mapped;
 }
 
-export function updatePendingPayment(
+export async function updatePendingPayment(
   orderReference: string,
-  patch: Partial<PendingMobilePayment>
+  patch: Partial<PendingMobilePayment> & { fulfilledAt?: string | null }
 ) {
-  const current = pendingPayments.get(orderReference);
+  const current = await getPendingPayment(orderReference);
   if (!current) return null;
-  const next = {
+
+  const next: PendingMobilePayment = {
     ...current,
     ...patch,
     updatedAt: new Date().toISOString(),
   };
   pendingPayments.set(orderReference, next);
-  return next;
+
+  const db = await pingDatabase();
+  if (!db.ok) {
+    if (isProductionRuntime()) {
+      throw new Error("Database required to update mobile money payments");
+    }
+    return next;
+  }
+
+  const prisma = await getPrisma();
+  const row = await prisma.pendingPayment.update({
+    where: { orderReference },
+    data: {
+      ...(patch.projectId !== undefined ? { projectId: patch.projectId } : {}),
+      ...(patch.slug !== undefined ? { slug: patch.slug } : {}),
+      ...(patch.title !== undefined ? { title: patch.title } : {}),
+      ...(patch.amount !== undefined ? { amount: patch.amount } : {}),
+      ...(patch.phoneNumber !== undefined
+        ? { phoneNumber: patch.phoneNumber }
+        : {}),
+      ...(patch.buyerEmail !== undefined
+        ? { buyerEmail: patch.buyerEmail || null }
+        : {}),
+      ...(patch.status !== undefined ? { status: patch.status } : {}),
+      ...(patch.channel !== undefined ? { channel: patch.channel || null } : {}),
+      ...(patch.clickpesaId !== undefined
+        ? { clickpesaId: patch.clickpesaId || null }
+        : {}),
+      ...(patch.message !== undefined ? { message: patch.message || null } : {}),
+      ...(patch.collectedAmount !== undefined
+        ? { collectedAmount: patch.collectedAmount }
+        : {}),
+      ...(patch.fulfilledAt !== undefined
+        ? {
+            fulfilledAt: patch.fulfilledAt
+              ? new Date(patch.fulfilledAt)
+              : null,
+          }
+        : {}),
+    },
+  });
+
+  const mapped = rowToPending(row);
+  pendingPayments.set(orderReference, mapped);
+  return mapped;
 }
 
 async function generateToken(): Promise<string> {

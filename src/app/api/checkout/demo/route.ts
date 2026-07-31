@@ -8,14 +8,26 @@ import {
 } from "@/lib/security";
 import { demoProjects } from "@/lib/demo-data";
 import { getPrisma, pingDatabase } from "@/lib/prisma";
+import { allowDemoCheckout, isProductionRuntime } from "@/lib/production";
 
 export const dynamic = "force-dynamic";
 
 /**
  * POST /api/checkout/demo
- * Free claim + offline gateway demo — still enforces university exclusivity.
+ * Local-only free claim — disabled in production.
  */
 export async function POST(req: Request) {
+  if (!allowDemoCheckout() || isProductionRuntime()) {
+    return jsonSecure(
+      {
+        error:
+          "Demo checkout is disabled. Configure ClickPesa for real payments.",
+        code: "DEMO_CHECKOUT_DISABLED",
+      },
+      { status: 403 }
+    );
+  }
+
   const originBlock = requireSameOrigin(req);
   if (originBlock) return originBlock;
   const limited = requireRateLimit(req, "checkout-demo", 20, 60_000);
@@ -51,6 +63,7 @@ export async function POST(req: Request) {
             body.projectId ? { id: String(body.projectId) } : undefined,
             body.slug ? { slug: String(body.slug) } : undefined,
           ].filter(Boolean) as { id?: string; slug?: string }[],
+          status: { in: ["PUBLISHED", "APPROVED"] },
         },
       });
       if (row) {

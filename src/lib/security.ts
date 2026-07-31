@@ -73,9 +73,11 @@ export function assertSameOrigin(req: Request): boolean {
       /* ignore */
     }
   }
-  // Local dev convenience
-  allowedHosts.add("localhost:3000");
-  allowedHosts.add("127.0.0.1:3000");
+  // Local dev convenience — never auto-allow localhost in production
+  if (process.env.NODE_ENV !== "production") {
+    allowedHosts.add("localhost:3000");
+    allowedHosts.add("127.0.0.1:3000");
+  }
 
   if (origin) {
     try {

@@ -24,7 +24,7 @@ export async function GET(req: Request) {
       );
     }
 
-    const pending = getPendingPayment(orderReference);
+    const pending = await getPendingPayment(orderReference);
 
     if (!isClickPesaConfigured()) {
       return NextResponse.json({
@@ -39,12 +39,19 @@ export async function GET(req: Request) {
     const remote = await queryPaymentStatus(orderReference);
     const latest = Array.isArray(remote.data) ? remote.data[0] : undefined;
     const status = latest?.status || pending?.status || "PROCESSING";
+    const collectedAmount =
+      latest?.collectedAmount !== undefined
+        ? Math.round(Number(latest.collectedAmount))
+        : undefined;
 
-    updatePendingPayment(orderReference, {
+    await updatePendingPayment(orderReference, {
       status,
       message: latest?.message,
       channel: latest?.channel || pending?.channel,
       clickpesaId: latest?.id || pending?.clickpesaId,
+      ...(collectedAmount !== undefined && Number.isFinite(collectedAmount)
+        ? { collectedAmount }
+        : {}),
     });
 
     const paid = status === "SUCCESS" || status === "SETTLED";
@@ -53,7 +60,12 @@ export async function GET(req: Request) {
     let fulfillCode: string | undefined;
 
     if (paid) {
-      const result = await fulfillClickPesaOrder(orderReference);
+      const result = await fulfillClickPesaOrder(orderReference, {
+        collectedAmount:
+          collectedAmount !== undefined && Number.isFinite(collectedAmount)
+            ? collectedAmount
+            : undefined,
+      });
       if (result.ok) {
         purchase = result.purchase;
       } else {
@@ -62,7 +74,7 @@ export async function GET(req: Request) {
       }
     }
 
-    const updated = getPendingPayment(orderReference);
+    const updated = await getPendingPayment(orderReference);
 
     return NextResponse.json({
       orderReference,

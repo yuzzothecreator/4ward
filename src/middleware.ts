@@ -1,7 +1,8 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
 const clerkEnabled = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
+const isProduction = process.env.NODE_ENV === "production";
 
 const isProtectedRoute = createRouteMatcher([
   "/dashboard(.*)",
@@ -35,7 +36,18 @@ const clerkHandler = clerkMiddleware(async (auth, req) => {
 
 export default clerkEnabled
   ? clerkHandler
-  : function middleware() {
+  : function middleware(req: NextRequest) {
+      if (isProduction && isProtectedRoute(req)) {
+        return withSecurityHeaders(
+          NextResponse.json(
+            {
+              error:
+                "Authentication is not configured. Set Clerk keys before going live.",
+            },
+            { status: 503 }
+          )
+        );
+      }
       return withSecurityHeaders(NextResponse.next());
     };
 

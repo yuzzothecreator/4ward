@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { demoProjects } from "@/lib/demo-data";
-import { rateLimit } from "@/lib/rate-limit";
 import {
   createOrderReference,
   initiateUssdPush,
@@ -10,15 +9,31 @@ import {
   savePendingPayment,
 } from "@/lib/clickpesa";
 import { checkUniversityExclusivityForEmail } from "@/lib/university-exclusivity";
+import {
+  requireRateLimit,
+  requireSameOrigin,
+  jsonSecure,
+} from "@/lib/security";
+import { getPrisma, pingDatabase } from "@/lib/prisma";
+import {
+  assertProductionPaymentsReady,
+  isProductionRuntime,
+} from "@/lib/production";
+import { resolveApiActor } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 /**
  * Start a ClickPesa USSD-PUSH mobile money collection.
- * Body: { projectId?, slug, phone, title?, price?, amount?, email? }
+ * Price is always taken from the catalog / DB — never trusted from the client.
  */
 export async function POST(req: Request) {
   try {
+    const prodBlock = assertProductionPaymentsReady();
+    if (prodBlock) {
+      return jsonSecure({ error: prodBlock }, { status: 503 });
+    }
+
     if (!isClickPesaConfigured()) {
       return NextResponse.json(
         {
@@ -30,13 +45,17 @@ export async function POST(req: Request) {
       );
     }
 
-    const ip = req.headers.get("x-forwarded-for") || "anon";
-    const limited = rateLimit(`clickpesa:${ip}`, 10, 60_000);
-    if (!limited.success) {
-      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
-    }
+    const originBlock = requireSameOrigin(req);
+    if (originBlock) return originBlock;
+    const limited = requireRateLimit(req, "clickpesa", 10, 60_000);
+    if (limited) return limited;
 
     const body = await req.json();
+    const actor = await resolveApiActor({
+      fallbackEmail: typeof body.email === "string" ? body.email : undefined,
+    });
+    if (!actor.ok) return actor.response;
+
     const phone = normalizeTzPhone(String(body.phone || ""));
     if (!phone) {
       return NextResponse.json(
@@ -52,29 +71,48 @@ export async function POST(req: Request) {
       demoProjects.find((p) => p.id === body.projectId) ||
       demoProjects.find((p) => p.slug === body.slug);
 
-    const title =
-      catalogProject?.title ||
-      (typeof body.title === "string" ? body.title : "") ||
-      "4ward project";
-    const projectId =
-      catalogProject?.id ||
-      (typeof body.projectId === "string" ? body.projectId : "") ||
-      `local_${body.slug || "project"}`;
-    const slug =
-      catalogProject?.slug ||
-      (typeof body.slug === "string" ? body.slug : "") ||
-      "";
-    const amount = Math.round(
-      Number(
-        catalogProject?.price ??
-          body.price ??
-          body.amount ??
-          0
-      )
-    );
+    let title = catalogProject?.title || "4ward project";
+    let projectId = catalogProject?.id || "";
+    let slug = catalogProject?.slug || "";
+    let amount = catalogProject ? Math.round(catalogProject.price) : NaN;
 
-    if (!slug) {
-      return NextResponse.json({ error: "Missing project slug" }, { status: 400 });
+    const db = await pingDatabase();
+    if (db.ok && (body.projectId || body.slug)) {
+      const prisma = await getPrisma();
+      const row = await prisma.project.findFirst({
+        where: {
+          OR: [
+            body.projectId ? { id: String(body.projectId) } : undefined,
+            body.slug ? { slug: String(body.slug) } : undefined,
+          ].filter(Boolean) as { id?: string; slug?: string }[],
+          status: { in: ["PUBLISHED", "APPROVED"] },
+        },
+      });
+      if (row) {
+        projectId = row.id;
+        slug = row.slug;
+        title = row.title;
+        amount = Math.round(row.price);
+      } else if (!catalogProject) {
+        return NextResponse.json(
+          { error: "Project not found or not published" },
+          { status: 404 }
+        );
+      }
+    } else if (isProductionRuntime()) {
+      return NextResponse.json(
+        { error: "Database unavailable" },
+        { status: 503 }
+      );
+    } else if (!catalogProject) {
+      return NextResponse.json(
+        { error: "Project not found" },
+        { status: 404 }
+      );
+    }
+
+    if (!slug || !projectId) {
+      return NextResponse.json({ error: "Missing project" }, { status: 400 });
     }
 
     if (!Number.isFinite(amount) || amount <= 0) {
@@ -84,15 +122,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const buyerEmail =
-      typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
-    if (!buyerEmail) {
-      return NextResponse.json(
-        { error: "Sign in so we can apply campus purchase rules." },
-        { status: 401 }
-      );
-    }
-
+    const buyerEmail = actor.email;
     const lock = await checkUniversityExclusivityForEmail({
       email: buyerEmail,
       projectId,
@@ -159,7 +189,7 @@ export async function POST(req: Request) {
     }
 
     const now = new Date().toISOString();
-    savePendingPayment({
+    await savePendingPayment({
       orderReference,
       projectId,
       slug,
@@ -193,8 +223,7 @@ export async function POST(req: Request) {
       phone,
       sender: preview.data.sender,
       activeMethods: available.map((m) => m.name),
-      message:
-        "Approve the USSD prompt on your phone to complete payment.",
+      message: "Approve the USSD prompt on your phone to complete payment.",
     });
   } catch (err) {
     console.error("[clickpesa] initiate failed", err);

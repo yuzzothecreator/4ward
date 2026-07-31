@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getEnvConfig } from "@/lib/env";
+import { allowDemoCheckout } from "@/lib/production";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +28,7 @@ export async function GET() {
         id: "demo",
         label: "Demo checkout",
         description: "Local purchase without a payment gateway",
-        enabled: !env.clickpesaEnabled,
+        enabled: allowDemoCheckout(),
         currency: "TZS",
       },
     },

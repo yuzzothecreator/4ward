@@ -14,8 +14,12 @@ export async function getPrisma(): Promise<PrismaClient> {
     // Drop stale singleton after prisma generate adds new models (dev HMR)
     const cached = globalForPrisma.prisma as PrismaClient & {
       projectRequest?: { findMany?: unknown };
+      pendingPayment?: { findUnique?: unknown };
     };
-    if (typeof cached.projectRequest?.findMany === "function") {
+    if (
+      typeof cached.projectRequest?.findMany === "function" &&
+      typeof cached.pendingPayment?.findUnique === "function"
+    ) {
       return globalForPrisma.prisma;
     }
     try {
@@ -45,13 +49,24 @@ export async function getPrisma(): Promise<PrismaClient> {
     /* keep as-is */
   }
 
+  const insecureSsl =
+    process.env.DATABASE_SSL_INSECURE === "true" ||
+    (process.env.NODE_ENV !== "production" &&
+      process.env.DATABASE_SSL_INSECURE !== "false");
+
   const pool = new pg.default.Pool({
     connectionString: poolUrl,
-    ssl: { rejectUnauthorized: false },
+    ssl: { rejectUnauthorized: !insecureSsl },
     max: 5,
     idleTimeoutMillis: 20_000,
     connectionTimeoutMillis: 15_000,
   });
+
+  if (process.env.NODE_ENV === "production" && insecureSsl) {
+    console.warn(
+      "[prisma] DATABASE_SSL_INSECURE=true — TLS certificate verification is disabled"
+    );
+  }
 
   const adapter = new PrismaPg(pool);
   const prisma = new PrismaClient({ adapter });

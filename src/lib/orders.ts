@@ -8,6 +8,7 @@ import {
   updatePendingPayment,
 } from "@/lib/clickpesa";
 import { checkUniversityExclusivity } from "@/lib/university-exclusivity";
+import { isProductionRuntime } from "@/lib/production";
 
 export class PurchaseBlockedError extends Error {
   code: string;
@@ -59,7 +60,10 @@ export async function fulfillPurchase(
 ): Promise<FulfilledPurchase> {
   const db = await pingDatabase();
   if (!db.ok) {
-    // Offline / demo DB — still return a usable entitlement token
+    if (isProductionRuntime()) {
+      throw new Error("Database unavailable — cannot fulfill purchase");
+    }
+    // Local demo only — still return a usable entitlement token
     const token = `demo_${randomBytes(12).toString("hex")}`;
     return {
       id: `local_${input.paymentReference}`,
@@ -310,14 +314,32 @@ export async function fulfillPurchase(
 }
 
 /** Fulfill a ClickPesa pending order after SUCCESS/SETTLED. */
-export async function fulfillClickPesaOrder(orderReference: string) {
-  const pending = getPendingPayment(orderReference);
+export async function fulfillClickPesaOrder(
+  orderReference: string,
+  opts?: { collectedAmount?: number }
+) {
+  const pending = await getPendingPayment(orderReference);
   if (!pending) {
     return { ok: false as const, error: "Unknown order reference" };
   }
 
-  if (pending.status !== "SUCCESS" && pending.status !== "SETTLED") {
-    // Allow explicit fulfill after remote status already checked by caller
+  if (
+    opts?.collectedAmount !== undefined &&
+    Number.isFinite(opts.collectedAmount)
+  ) {
+    // Allow 1 TZS rounding tolerance
+    if (Math.abs(opts.collectedAmount - pending.amount) > 1) {
+      await updatePendingPayment(orderReference, {
+        status: "FAILED",
+        message: `Amount mismatch: expected ${pending.amount}, got ${opts.collectedAmount}`,
+        collectedAmount: opts.collectedAmount,
+      });
+      return {
+        ok: false as const,
+        error: "Paid amount does not match order total",
+        code: "AMOUNT_MISMATCH",
+      };
+    }
   }
 
   const email =
@@ -337,15 +359,19 @@ export async function fulfillClickPesaOrder(orderReference: string) {
       phone: pending.phoneNumber,
     });
 
-    updatePendingPayment(orderReference, {
+    await updatePendingPayment(orderReference, {
       status: "SUCCESS",
       message: "Fulfilled",
+      fulfilledAt: new Date().toISOString(),
+      ...(opts?.collectedAmount !== undefined
+        ? { collectedAmount: opts.collectedAmount }
+        : {}),
     });
 
     return { ok: true as const, purchase: fulfilled, pending };
   } catch (err) {
     if (err instanceof PurchaseBlockedError) {
-      updatePendingPayment(orderReference, {
+      await updatePendingPayment(orderReference, {
         status: "FAILED",
         message: err.message,
       });

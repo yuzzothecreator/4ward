@@ -3,7 +3,11 @@ import { projectSchema } from "@/lib/validations";
 import { slugify } from "@/lib/utils";
 import { rateLimit } from "@/lib/rate-limit";
 import { getPrisma, pingDatabase } from "@/lib/prisma";
-import { assertApiRole } from "@/lib/auth";
+import { assertApiRole, resolveApiActor } from "@/lib/auth";
+import { ensureAppUser } from "@/lib/users";
+import { requireSameOrigin } from "@/lib/security";
+import { isProductionRuntime } from "@/lib/production";
+import { canonicalizeInstitution } from "@/lib/tanzania-institutions";
 
 export async function GET() {
   const db = await pingDatabase();
@@ -19,7 +23,7 @@ export async function GET() {
   try {
     const prisma = await getPrisma();
     const projects = await prisma.project.findMany({
-      where: { status: { in: ["PUBLISHED", "APPROVED", "PENDING_REVIEW", "DRAFT"] } },
+      where: { status: { in: ["PUBLISHED", "APPROVED"] } },
       orderBy: { createdAt: "desc" },
       take: 100,
       include: {
@@ -61,6 +65,9 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
+    const originBlock = requireSameOrigin(req);
+    if (originBlock) return originBlock;
+
     const gate = await assertApiRole([
       "SELLER",
       "ADMIN",
@@ -76,6 +83,16 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
+    const actor = await resolveApiActor({
+      fallbackEmail:
+        typeof body.sellerEmail === "string" ? body.sellerEmail : undefined,
+      fallbackName:
+        typeof body.sellerName === "string" ? body.sellerName : undefined,
+      fallbackClerkId:
+        typeof body.clerkId === "string" ? body.clerkId : undefined,
+    });
+    if (!actor.ok) return actor.response;
+
     const parsed = projectSchema.safeParse(body);
 
     if (!parsed.success) {
@@ -115,8 +132,14 @@ export async function POST(req: Request) {
 
     const db = await pingDatabase();
     if (!db.ok) {
-      // Demo / offline: still reject Market unless client says verified
-      if (wantsMarket && body.sellerVerified !== true) {
+      if (isProductionRuntime()) {
+        return NextResponse.json(
+          { error: "Database unavailable" },
+          { status: 503 }
+        );
+      }
+      // Local demo: never allow Market without a real DB badge check
+      if (wantsMarket) {
         return NextResponse.json(
           {
             error:
@@ -137,40 +160,38 @@ export async function POST(req: Request) {
       );
     }
 
-    const prisma = await getPrisma();
+    const universityRaw =
+      typeof body.university === "string" ? body.university.trim() : "";
+    const university =
+      canonicalizeInstitution(universityRaw) || universityRaw || undefined;
 
-    // Ensure a seller user exists (demo clerk id until Clerk is wired)
-    const demoClerkId = body.clerkId || `demo_${parsed.data.title.slice(0, 12)}`;
-    const email =
-      body.sellerEmail ||
-      `seller_${Date.now()}@4ward.local`;
-    const username =
-      body.sellerUsername ||
-      `seller_${Date.now().toString(36)}`;
-
-    const seller = await prisma.user.upsert({
-      where: { email },
-      update: { role: "SELLER" },
-      create: {
-        clerkId: `${demoClerkId}_${Date.now()}`,
-        name: body.sellerName || "Student Creator",
-        email,
-        username,
-        role: "SELLER",
-        university: body.university || "University of Dar es Salaam",
-        isApproved: true,
-      },
-      include: {
-        badges: { select: { badge: true } },
-      },
+    const sellerResult = await ensureAppUser({
+      email: actor.email,
+      name: actor.name,
+      clerkId: actor.clerkId,
+      avatar: actor.imageUrl,
+      university,
+      minRole: "SELLER",
+      role: "SELLER",
     });
+    if (!sellerResult.user) {
+      return NextResponse.json(
+        { error: sellerResult.error || "Could not resolve seller" },
+        { status: 500 }
+      );
+    }
 
-    // Refresh seller with profile fields for publish gate
-    const sellerProfile = await prisma.user.findUnique({
-      where: { id: seller.id },
+    const prisma = await getPrisma();
+    const sellerGate = await prisma.user.findUnique({
+      where: { id: sellerResult.user.id },
       include: { badges: { select: { badge: true } } },
     });
-    const sellerGate = sellerProfile || seller;
+    if (!sellerGate) {
+      return NextResponse.json(
+        { error: "Seller profile missing" },
+        { status: 500 }
+      );
+    }
 
     if (wantsMarket) {
       const verified = sellerGate.badges.some(
@@ -215,7 +236,7 @@ export async function POST(req: Request) {
       data: {
         ...payload,
         slug,
-        sellerId: seller.id,
+        sellerId: sellerGate.id,
         coverImage:
           "https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=800&q=80",
         images: [
@@ -228,10 +249,14 @@ export async function POST(req: Request) {
       id: project.id,
       title: project.title,
       status: project.status,
+      sellerId: sellerGate.id,
       demo: false,
     });
 
-    return NextResponse.json({ success: true, project, demo: false }, { status: 201 });
+    return NextResponse.json(
+      { success: true, project, demo: false },
+      { status: 201 }
+    );
   } catch (err) {
     console.error(err);
     return NextResponse.json(

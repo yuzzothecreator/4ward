@@ -404,3 +404,27 @@ model AuditLog {
   @@index([userId])
   @@index([action])
 }
+
+/** Durable ClickPesa USSD order state (survives multi-instance / cold starts). */
+model PendingPayment {
+  id               String    @id @default(cuid())
+  orderReference   String    @unique
+  projectId        String
+  slug             String
+  title            String
+  amount           Float
+  phoneNumber      String
+  buyerEmail       String?
+  status           String    @default("PROCESSING")
+  channel          String?
+  clickpesaId      String?
+  message          String?
+  collectedAmount  Float?
+  fulfilledAt      DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([status])
+  @@index([buyerEmail])
+  @@index([createdAt])
+}
