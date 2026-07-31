@@ -29,14 +29,11 @@ export function clearAdminToken() {
 
 export function adminHeaders(extra?: HeadersInit): HeadersInit {
   const token = getAdminToken();
+  // Use x-admin-token only — Authorization: Bearer confuses Clerk's auth()
+  // into treating the admin session token as a Clerk JWT (then userId is null).
   return {
     ...(extra || {}),
-    ...(token
-      ? {
-          "x-admin-token": token,
-          Authorization: `Bearer ${token}`,
-        }
-      : {}),
+    ...(token ? { "x-admin-token": token } : {}),
   };
 }
 
@@ -64,7 +61,8 @@ export async function ensureAdminSession(user: {
   });
   const data = await res.json();
   if (!res.ok || !data.token) {
-    throw new Error(data.error || "Could not start admin session");
+    const detail = [data.error, data.hint].filter(Boolean).join(" — ");
+    throw new Error(detail || "Could not start admin session");
   }
   setAdminToken(data.token, data.expiresAt);
   return data.token as string;

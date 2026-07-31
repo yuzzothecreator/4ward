@@ -41,7 +41,7 @@ function tokenFrom(req: Request) {
  * Hardened admin gate:
  * - Rate limit
  * - Same-origin on mutations
- * - Clerk ADMIN role OR signed admin session token (not spoofable email alone)
+ * - Clerk allowlisted admin OR signed admin session token
  */
 export async function requireAdminActor(
   req: Request,
@@ -68,112 +68,113 @@ export async function requireAdminActor(
     if (originBlock) return { ok: false, response: originBlock };
   }
 
+  // 1) Clerk session (when available on this request)
   if (clerkEnabled) {
-    const { userId } = await auth();
-    if (!userId) {
-      return {
-        ok: false,
-        response: jsonSecure({ error: "Unauthorized" }, { status: 401 }),
-      };
-    }
-    const user = await currentUser();
-    const role = normalizeRole(user?.publicMetadata?.role, "BUYER");
-    const email =
-      user?.primaryEmailAddress?.emailAddress ||
-      user?.emailAddresses?.[0]?.emailAddress ||
-      "";
-    const normalizedEmail = email.toLowerCase();
+    try {
+      const { userId } = await auth();
+      if (userId) {
+        const user = await currentUser();
+        const role = normalizeRole(user?.publicMetadata?.role, "BUYER");
+        const email =
+          user?.primaryEmailAddress?.emailAddress ||
+          user?.emailAddresses?.[0]?.emailAddress ||
+          "";
+        const normalizedEmail = email.toLowerCase();
+        const isOwner = normalizedEmail === getAdminEmail();
 
-    if (role !== "ADMIN" || !isAdminEmail(normalizedEmail)) {
-      return {
-        ok: false,
-        response: jsonSecure({ error: "Admin access required" }, { status: 403 }),
-      };
-    }
-    return {
-      ok: true,
-      role: "ADMIN",
-      demo: false,
-      actorEmail: normalizedEmail,
-      actorUserId: undefined,
-      ip,
-    };
-  }
-
-  const verified = verifyAdminSessionToken(tokenFrom(req));
-  if (!verified.ok || !verified.email) {
-    return {
-      ok: false,
-      response: jsonSecure(
-        {
-          error: verified.error || "Admin session required",
-          hint: "POST /api/admin/session after signing in as admin",
-        },
-        { status: 401 }
-      ),
-    };
-  }
-
-  const email = verified.email;
-
-  if (!isAdminEmail(email)) {
-    return {
-      ok: false,
-      response: jsonSecure({ error: "Admin access required" }, { status: 403 }),
-    };
-  }
-
-  // Token + allowlist — also confirm DB role in production
-  if (email === getAdminEmail() && !isProductionRuntime()) {
-    const db = await pingDatabase();
-    let actorUserId: string | undefined;
-    if (db.ok) {
-      try {
-        const prisma = await getPrisma();
-        const row = await prisma.user.findUnique({ where: { email } });
-        actorUserId = row?.id;
-      } catch {
-        /* ignore */
+        if (isAdminEmail(normalizedEmail) && (role === "ADMIN" || isOwner)) {
+          return {
+            ok: true,
+            role: "ADMIN",
+            demo: false,
+            actorEmail: normalizedEmail,
+            actorUserId: undefined,
+            ip,
+          };
+        }
       }
+    } catch {
+      /* fall through to admin token */
     }
-    return {
-      ok: true,
-      role: "ADMIN",
-      demo: true,
-      actorEmail: email,
-      actorUserId,
-      ip,
-    };
   }
 
-  const db = await pingDatabase();
-  if (!db.ok) {
-    return {
-      ok: false,
-      response: jsonSecure({ error: "Database unavailable" }, { status: 503 }),
-    };
-  }
+  // 2) Signed admin session token (from POST /api/admin/session)
+  const verified = verifyAdminSessionToken(tokenFrom(req));
+  if (verified.ok && verified.email && isAdminEmail(verified.email)) {
+    const email = verified.email;
 
-  try {
-    const prisma = await getPrisma();
-    const row = await prisma.user.findUnique({ where: { email } });
-    if (row?.role === "ADMIN" && isAdminEmail(email)) {
+    if (email === getAdminEmail() && !isProductionRuntime()) {
+      const db = await pingDatabase();
+      let actorUserId: string | undefined;
+      if (db.ok) {
+        try {
+          const prisma = await getPrisma();
+          const row = await prisma.user.findUnique({ where: { email } });
+          actorUserId = row?.id;
+        } catch {
+          /* ignore */
+        }
+      }
+      return {
+        ok: true,
+        role: "ADMIN",
+        demo: true,
+        actorEmail: email,
+        actorUserId,
+        ip,
+      };
+    }
+
+    const db = await pingDatabase();
+    if (!db.ok) {
+      // Token is valid + allowlisted — allow even if DB briefly down
+      return {
+        ok: true,
+        role: "ADMIN",
+        demo: true,
+        actorEmail: email,
+        ip,
+      };
+    }
+
+    try {
+      const prisma = await getPrisma();
+      const row = await prisma.user.findUnique({ where: { email } });
+      if (row?.role === "ADMIN" || email === getAdminEmail()) {
+        return {
+          ok: true,
+          role: "ADMIN",
+          demo: false,
+          actorEmail: email,
+          actorUserId: row?.id,
+          ip,
+        };
+      }
+    } catch {
+      /* fall through */
+    }
+
+    // Allowlisted token holder (bootstrap admin) is enough
+    if (email === getAdminEmail()) {
       return {
         ok: true,
         role: "ADMIN",
         demo: false,
         actorEmail: email,
-        actorUserId: row.id,
         ip,
       };
     }
-  } catch {
-    /* fall through */
   }
 
   return {
     ok: false,
-    response: jsonSecure({ error: "Admin access required" }, { status: 403 }),
+    response: jsonSecure(
+      {
+        error: "Unauthorized",
+        hint: `Sign in as ${getAdminEmail()}, open Admin once to create a session, then retry.`,
+      },
+      { status: 401 }
+    ),
   };
 }
 

@@ -1,4 +1,3 @@
-import { NextResponse } from "next/server";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { issueAdminSessionToken, requireRateLimit, requireSameOrigin, jsonSecure, clientIp } from "@/lib/security";
 import {
@@ -12,6 +11,7 @@ import {
 import { getPrisma, pingDatabase } from "@/lib/prisma";
 import { ensureAdminUsersSynced, writeAdminAudit } from "@/lib/admin-auth";
 import { normalizeRole } from "@/lib/rbac";
+import { ensureAppUser } from "@/lib/users";
 
 export const dynamic = "force-dynamic";
 
@@ -20,11 +20,11 @@ const clerkEnabled = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
 /**
  * Issue a signed admin session token after verifying the caller is an admin.
  *
- * Production rules:
- * - ADMIN_EMAIL / ADMIN_EMAILS allowlist required
- * - Strong ADMIN_SESSION_SECRET required
- * - Clerk mode: signed-in Clerk user with role ADMIN + allowlisted email
- * - Password mode: ADMIN_PASSWORD_HASH must match (no open passwords)
+ * Allow when email is allowlisted AND any of:
+ * - Clerk session with publicMetadata.role = ADMIN
+ * - Clerk session as ADMIN_EMAIL (bootstrap owner)
+ * - DB user.role = ADMIN
+ * - Valid ADMIN_PASSWORD_HASH password
  */
 export async function POST(req: Request) {
   const limited = requireRateLimit(req, "admin-session", 8, 60_000);
@@ -56,16 +56,29 @@ export async function POST(req: Request) {
       await writeAdminAudit({
         action: "admin.session.denied",
         entity: "User",
-        metadata: { email, reason: "not_allowlisted" },
+        metadata: {
+          email,
+          reason: "not_allowlisted",
+          expected: getAdminEmail(),
+        },
         ipAddress: clientIp(req),
       });
-      return jsonSecure({ error: "Not an allowlisted admin account" }, { status: 403 });
+      return jsonSecure(
+        {
+          error: "Not an allowlisted admin account",
+          hint: `Sign in as ${getAdminEmail()} (ADMIN_EMAIL), or add this email to ADMIN_EMAILS and restart the server.`,
+          signedInAs: email,
+          allowlistedAs: getAdminEmail(),
+        },
+        { status: 403 }
+      );
     }
 
     let allowed = false;
     let userId: string | undefined;
     let via: "clerk" | "password" | "db" = "db";
 
+    // Prefer live Clerk session for the same allowlisted email
     if (clerkEnabled) {
       const { userId: clerkUserId } = await auth();
       const clerkUser = clerkUserId ? await currentUser() : null;
@@ -75,22 +88,38 @@ export async function POST(req: Request) {
         "";
       const clerkRole = normalizeRole(clerkUser?.publicMetadata?.role, "BUYER");
 
-      if (
-        clerkUserId &&
-        clerkEmail === email &&
-        clerkRole === "ADMIN" &&
-        isAdminEmail(clerkEmail)
-      ) {
-        allowed = true;
-        via = "clerk";
+      if (clerkUserId && clerkEmail === email && isAdminEmail(clerkEmail)) {
+        const isOwner = email === getAdminEmail();
+        if (clerkRole === "ADMIN" || isOwner) {
+          allowed = true;
+          via = "clerk";
+        }
       }
     }
 
-    // Password gate (required when hash is configured and Clerk didn't authorize)
+    // DB role ADMIN on allowlisted email
+    if (!allowed) {
+      const db = await pingDatabase();
+      if (db.ok) {
+        const prisma = await getPrisma();
+        const row = await prisma.user.findUnique({ where: { email } });
+        userId = row?.id;
+        if (row?.role === "ADMIN") {
+          allowed = true;
+          via = "db";
+        }
+      }
+    }
+
+    // Password gate for allowlisted admin
     if (!allowed && hasAdminPasswordConfigured()) {
       if (!password) {
         return jsonSecure(
-          { error: "Admin password required", code: "PASSWORD_REQUIRED" },
+          {
+            error: "Admin password required",
+            code: "PASSWORD_REQUIRED",
+            hint: "Enter the password from npm run admin:bootstrap",
+          },
           { status: 401 }
         );
       }
@@ -107,18 +136,12 @@ export async function POST(req: Request) {
       via = "password";
     }
 
-    // Dev fallback: DB role ADMIN on allowlisted email (never in production without password/Clerk)
+    // Local-dev fallback without password hash
     if (!allowed && !isProductionRuntime() && !hasAdminPasswordConfigured()) {
-      const db = await pingDatabase();
-      if (db.ok) {
-        const prisma = await getPrisma();
-        const row = await prisma.user.findUnique({ where: { email } });
-        allowed = row?.role === "ADMIN";
-        userId = row?.id;
+      if (email === getAdminEmail()) {
+        allowed = true;
         via = "db";
       }
-      // Bootstrap email still works in local dev without hash (discouraged)
-      if (!allowed && email === getAdminEmail()) allowed = true;
     }
 
     if (!allowed) {
@@ -128,8 +151,27 @@ export async function POST(req: Request) {
         metadata: { email, reason: "unauthorized" },
         ipAddress: clientIp(req),
       });
-      return jsonSecure({ error: "Not an admin account" }, { status: 403 });
+      return jsonSecure(
+        {
+          error: "Not an admin account",
+          hint:
+            "Set Clerk publicMetadata.role to ADMIN, or use the bootstrap admin password.",
+        },
+        { status: 403 }
+      );
     }
+
+    // Ensure a single ADMIN row exists for this email
+    const synced = await ensureAppUser({
+      email,
+      name: String(body.name || "Admin"),
+      username: typeof body.username === "string" ? body.username : undefined,
+      university:
+        typeof body.university === "string" ? body.university : undefined,
+      role: "ADMIN",
+      minRole: "ADMIN",
+    });
+    userId = synced.user?.id || userId;
 
     await ensureAdminUsersSynced({
       actorEmail: email,
@@ -158,7 +200,12 @@ export async function POST(req: Request) {
       expiresIn: session.expiresIn,
       via,
     });
-  } catch {
-    return jsonSecure({ error: "Could not create admin session" }, { status: 400 });
+  } catch (err) {
+    return jsonSecure(
+      {
+        error: err instanceof Error ? err.message : "Could not create admin session",
+      },
+      { status: 400 }
+    );
   }
 }

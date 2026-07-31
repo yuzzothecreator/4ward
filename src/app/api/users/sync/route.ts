@@ -68,6 +68,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "email is required" }, { status: 400 });
     }
 
+    // Allowlisted bootstrap admins always sync as ADMIN
+    const { isAdminEmail } = await import("@/lib/admin-config");
+    if (isAdminEmail(email)) {
+      role = "ADMIN";
+    }
+
     const intent =
       body.intent === "SELLER" || body.intent === "BUYER" ? body.intent : undefined;
 

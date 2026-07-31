@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RequireRole } from "@/components/auth/require-role";
 import { adminHeaders } from "@/lib/admin-session";
+import { ensureAdminSessionWithPrompt } from "@/lib/admin-session-client";
 import { useAppStore } from "@/store/use-app-store";
 
 type VerificationRow = {
@@ -48,23 +49,45 @@ function AdminVerificationInner() {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch(
-        `/api/admin/verification?status=${filter}`,
-        { headers: adminHeaders() }
-      );
-      const data = await res.json();
+      if (current?.email) {
+        await ensureAdminSessionWithPrompt(current);
+      }
+      const res = await fetch(`/api/admin/verification?status=${filter}`, {
+        headers: adminHeaders(),
+        credentials: "same-origin",
+      });
+      const text = await res.text();
+      let data: {
+        requests?: VerificationRow[];
+        error?: string;
+        hint?: string;
+      } = {};
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        setError(
+          res.status === 404
+            ? "Verification API not reachable — restart the dev server and try again."
+            : `Unexpected response (${res.status})`
+        );
+        setRows([]);
+        return;
+      }
       if (!res.ok) {
-        setError(data.error || "Could not load verification requests");
+        setError(
+          [data.error, data.hint].filter(Boolean).join(" — ") ||
+            "Could not load verification requests"
+        );
         setRows([]);
         return;
       }
       setRows(Array.isArray(data.requests) ? data.requests : []);
-    } catch {
-      setError("Network error loading requests");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Network error loading requests");
     } finally {
       setLoading(false);
     }
-  }, [filter]);
+  }, [filter, current]);
 
   useEffect(() => {
     void load();
@@ -74,23 +97,36 @@ function AdminVerificationInner() {
     setBusyId(id);
     setError("");
     try {
+      if (current?.email) {
+        await ensureAdminSessionWithPrompt(current);
+      }
       const res = await fetch("/api/admin/verification", {
         method: "PATCH",
         headers: adminHeaders({ "Content-Type": "application/json" }),
+        credentials: "same-origin",
         body: JSON.stringify({
           id,
           action,
           adminNote: notes[id] || undefined,
         }),
       });
-      const data = await res.json();
+      const text = await res.text();
+      let data: { error?: string; hint?: string } = {};
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        setError(`Unexpected response (${res.status})`);
+        return;
+      }
       if (!res.ok) {
-        setError(data.error || "Action failed");
+        setError(
+          [data.error, data.hint].filter(Boolean).join(" — ") || "Action failed"
+        );
         return;
       }
       await load();
-    } catch {
-      setError("Network error");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Network error");
     } finally {
       setBusyId(null);
     }

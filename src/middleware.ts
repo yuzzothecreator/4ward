@@ -7,11 +7,12 @@ const isProtectedRoute = createRouteMatcher([
   "/dashboard(.*)",
   "/sell(.*)",
   "/checkout(.*)",
-  "/api/projects(.*)",
-  "/api/checkout(.*)",
-  "/api/downloads(.*)",
-  "/api/admin(.*)",
+  "/welcome(.*)",
 ]);
+
+// API routes authenticate themselves (admin token / Clerk in-handler).
+// Do not auth.protect() /api/* here — Clerk protect() returns HTML 404 on APIs
+// and breaks admin/fetch JSON clients.
 
 function withSecurityHeaders(res: NextResponse) {
   res.headers.set("X-Content-Type-Options", "nosniff");

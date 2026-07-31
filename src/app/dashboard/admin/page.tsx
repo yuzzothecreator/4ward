@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/button";
 import { formatPrice } from "@/lib/utils";
 import { useAppStore } from "@/store/use-app-store";
 import { DEMO_ADMIN_EMAIL, ROLE_LABELS, type AppRole } from "@/lib/rbac";
-import { adminHeaders, ensureAdminSession } from "@/lib/admin-session";
+import { adminHeaders } from "@/lib/admin-session";
+import { ensureAdminSessionWithPrompt } from "@/lib/admin-session-client";
 
 type Stats = {
   users: number;
@@ -90,13 +91,16 @@ export default function AdminPage() {
     setLoading(true);
     setError("");
     try {
-      await ensureAdminSession(user);
+      await ensureAdminSessionWithPrompt(user);
       const res = await fetch("/api/admin/stats", {
         headers: adminHeaders(),
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "Failed to load admin stats");
+        setError(
+          [data.error, data.hint].filter(Boolean).join(" — ") ||
+            "Failed to load admin stats"
+        );
         return;
       }
       setStats(data.stats);
@@ -121,7 +125,7 @@ export default function AdminPage() {
     if (!user?.email) return;
     setBusyId(projectId);
     try {
-      await ensureAdminSession(user);
+      await ensureAdminSessionWithPrompt(user);
       const res = await fetch("/api/admin/projects", {
         method: "PATCH",
         headers: adminHeaders({ "Content-Type": "application/json" }),
@@ -147,7 +151,7 @@ export default function AdminPage() {
     if (!user?.email) return;
     setBusyId(userId);
     try {
-      await ensureAdminSession(user);
+      await ensureAdminSessionWithPrompt(user);
       const res = await fetch("/api/admin/users", {
         method: "PATCH",
         headers: adminHeaders({ "Content-Type": "application/json" }),

@@ -14,7 +14,8 @@ import {
   ROLE_LABELS,
   DEMO_ADMIN_EMAIL,
 } from "@/lib/rbac";
-import { adminHeaders, ensureAdminSession } from "@/lib/admin-session";
+import { adminHeaders } from "@/lib/admin-session";
+import { ensureAdminSessionWithPrompt } from "@/lib/admin-session-client";
 
 type ManagedUser = {
   id: string;
@@ -62,7 +63,7 @@ export default function AdminUsersPage() {
     setLoading(true);
     setError("");
     try {
-      await ensureAdminSession(current!);
+      await ensureAdminSessionWithPrompt(current!);
       const params = new URLSearchParams({
         sessionName: current?.name || "Admin",
         sessionUniversity: current?.university || "",
@@ -73,7 +74,10 @@ export default function AdminUsersPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "Failed to load users");
+        setError(
+          [data.error, data.hint].filter(Boolean).join(" — ") ||
+            "Failed to load users"
+        );
         setUsers([]);
         return;
       }
