@@ -9,7 +9,10 @@ export const dynamic = "force-dynamic";
  * PATCH { projectId, status, rejectionReason? }
  */
 export async function PATCH(req: Request) {
-  const gate = await requireAdminActor(req, { mutate: true });
+  const gate = await requireAdminActor(req, {
+    mutate: true,
+    permission: "admin:approvals",
+  });
   if (!gate.ok) return gate.response;
 
   try {

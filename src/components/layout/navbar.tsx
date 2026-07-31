@@ -53,6 +53,7 @@ function DemoAuthActions() {
         email: user.email,
         username: user.username,
         role: user.role,
+        verified: Boolean(user.verified),
       }}
       onSignOut={() => signOut()}
     />
@@ -101,6 +102,7 @@ function ClerkAuthActions() {
         username: storeUser?.username,
         role: storeUser?.role,
         avatarUrl: clerkUser?.imageUrl,
+        verified: Boolean(storeUser?.verified),
       }}
       onSignOut={handleSignOut}
     />

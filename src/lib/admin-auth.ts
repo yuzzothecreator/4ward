@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server";
 import { auth, currentUser } from "@clerk/nextjs/server";
-import { type AppRole, normalizeRole } from "@/lib/rbac";
+import {
+  type AppRole,
+  type Permission,
+  type StaffRole,
+  hasPermission,
+  isStaffRole,
+  normalizeRole,
+} from "@/lib/rbac";
 import { getPrisma, pingDatabase } from "@/lib/prisma";
 import {
   clientIp,
@@ -21,7 +28,7 @@ const clerkEnabled = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
 export type AdminGate =
   | {
       ok: true;
-      role: "ADMIN";
+      role: StaffRole;
       demo: boolean;
       actorEmail: string;
       actorUserId?: string;
@@ -37,15 +44,35 @@ function tokenFrom(req: Request) {
   );
 }
 
+async function resolveDbStaff(
+  email: string
+): Promise<{ role: StaffRole; userId?: string } | null> {
+  const db = await pingDatabase();
+  if (!db.ok) return null;
+  try {
+    const prisma = await getPrisma();
+    const row = await prisma.user.findUnique({ where: { email } });
+    if (!row || !isStaffRole(row.role)) return null;
+    return { role: row.role as StaffRole, userId: row.id };
+  } catch {
+    return null;
+  }
+}
+
+function ownerStaffRole(email: string): StaffRole | null {
+  if (email === getAdminEmail() || isAdminEmail(email)) return "SUPER_ADMIN";
+  return null;
+}
+
 /**
- * Hardened admin gate:
- * - Rate limit
- * - Same-origin on mutations
- * - Clerk allowlisted admin OR signed admin session token
+ * Staff gate (SUPPORT | ADMIN | SUPER_ADMIN):
+ * - Rate limit + same-origin on mutations
+ * - Clerk session and/or signed staff session token
+ * - Optional permission check
  */
-export async function requireAdminActor(
+export async function requireStaffActor(
   req: Request,
-  opts?: { mutate?: boolean }
+  opts?: { mutate?: boolean; permission?: Permission }
 ): Promise<AdminGate> {
   try {
     assertAdminSecretsConfigured();
@@ -53,14 +80,22 @@ export async function requireAdminActor(
     return {
       ok: false,
       response: jsonSecure(
-        { error: err instanceof Error ? err.message : "Admin secrets misconfigured" },
+        {
+          error:
+            err instanceof Error ? err.message : "Admin secrets misconfigured",
+        },
         { status: 503 }
       ),
     };
   }
 
   const ip = clientIp(req);
-  const limited = requireRateLimit(req, "admin", opts?.mutate ? 30 : 60, 60_000);
+  const limited = requireRateLimit(
+    req,
+    "admin",
+    opts?.mutate ? 30 : 60,
+    60_000
+  );
   if (limited) return { ok: false, response: limited };
 
   if (opts?.mutate) {
@@ -68,114 +103,117 @@ export async function requireAdminActor(
     if (originBlock) return { ok: false, response: originBlock };
   }
 
-  // 1) Clerk session (when available on this request)
+  let actorEmail = "";
+  let actorRole: StaffRole | null = null;
+  let actorUserId: string | undefined;
+  let demo = false;
+
+  // 1) Clerk session
   if (clerkEnabled) {
     try {
       const { userId } = await auth();
       if (userId) {
         const user = await currentUser();
-        const role = normalizeRole(user?.publicMetadata?.role, "BUYER");
         const email =
           user?.primaryEmailAddress?.emailAddress ||
           user?.emailAddresses?.[0]?.emailAddress ||
           "";
         const normalizedEmail = email.toLowerCase();
-        const isOwner = normalizedEmail === getAdminEmail();
+        const metaRole = normalizeRole(user?.publicMetadata?.role, "BUYER");
 
-        if (isAdminEmail(normalizedEmail) && (role === "ADMIN" || isOwner)) {
-          return {
-            ok: true,
-            role: "ADMIN",
-            demo: false,
-            actorEmail: normalizedEmail,
-            actorUserId: undefined,
-            ip,
-          };
+        if (normalizedEmail) {
+          const owner = ownerStaffRole(normalizedEmail);
+          if (owner) {
+            actorEmail = normalizedEmail;
+            actorRole = owner;
+          } else if (isStaffRole(metaRole)) {
+            actorEmail = normalizedEmail;
+            actorRole = metaRole;
+          } else {
+            const dbStaff = await resolveDbStaff(normalizedEmail);
+            if (dbStaff) {
+              actorEmail = normalizedEmail;
+              actorRole = dbStaff.role;
+              actorUserId = dbStaff.userId;
+            }
+          }
         }
-      }
-    } catch {
-      /* fall through to admin token */
-    }
-  }
-
-  // 2) Signed admin session token (from POST /api/admin/session)
-  const verified = verifyAdminSessionToken(tokenFrom(req));
-  if (verified.ok && verified.email && isAdminEmail(verified.email)) {
-    const email = verified.email;
-
-    if (email === getAdminEmail() && !isProductionRuntime()) {
-      const db = await pingDatabase();
-      let actorUserId: string | undefined;
-      if (db.ok) {
-        try {
-          const prisma = await getPrisma();
-          const row = await prisma.user.findUnique({ where: { email } });
-          actorUserId = row?.id;
-        } catch {
-          /* ignore */
-        }
-      }
-      return {
-        ok: true,
-        role: "ADMIN",
-        demo: true,
-        actorEmail: email,
-        actorUserId,
-        ip,
-      };
-    }
-
-    const db = await pingDatabase();
-    if (!db.ok) {
-      // Token is valid + allowlisted — allow even if DB briefly down
-      return {
-        ok: true,
-        role: "ADMIN",
-        demo: true,
-        actorEmail: email,
-        ip,
-      };
-    }
-
-    try {
-      const prisma = await getPrisma();
-      const row = await prisma.user.findUnique({ where: { email } });
-      if (row?.role === "ADMIN" || email === getAdminEmail()) {
-        return {
-          ok: true,
-          role: "ADMIN",
-          demo: false,
-          actorEmail: email,
-          actorUserId: row?.id,
-          ip,
-        };
       }
     } catch {
       /* fall through */
     }
+  }
 
-    // Allowlisted token holder (bootstrap admin) is enough
-    if (email === getAdminEmail()) {
-      return {
-        ok: true,
-        role: "ADMIN",
-        demo: false,
-        actorEmail: email,
-        ip,
-      };
+  // 2) Signed staff session token
+  if (!actorRole) {
+    const verified = verifyAdminSessionToken(tokenFrom(req));
+    if (verified.ok && verified.email) {
+      const email = verified.email;
+      const owner = ownerStaffRole(email);
+      if (owner) {
+        actorEmail = email;
+        actorRole = owner;
+        demo = !isProductionRuntime();
+        const dbStaff = await resolveDbStaff(email);
+        actorUserId = dbStaff?.userId;
+      } else {
+        const dbStaff = await resolveDbStaff(email);
+        if (dbStaff) {
+          actorEmail = email;
+          actorRole = dbStaff.role;
+          actorUserId = dbStaff.userId;
+          demo = !isProductionRuntime();
+        }
+      }
     }
   }
 
+  if (!actorRole || !actorEmail) {
+    return {
+      ok: false,
+      response: jsonSecure(
+        {
+          error: "Unauthorized",
+          hint: `Sign in as staff (${getAdminEmail()} or an assigned Admin / Support account).`,
+        },
+        { status: 401 }
+      ),
+    };
+  }
+
+  const needed = opts?.permission;
+  if (needed && !hasPermission(actorRole, needed)) {
+    return {
+      ok: false,
+      response: jsonSecure(
+        {
+          error: "Forbidden",
+          hint: `Requires ${needed}. Your role: ${actorRole}.`,
+        },
+        { status: 403 }
+      ),
+    };
+  }
+
   return {
-    ok: false,
-    response: jsonSecure(
-      {
-        error: "Unauthorized",
-        hint: `Sign in as ${getAdminEmail()}, open Admin once to create a session, then retry.`,
-      },
-      { status: 401 }
-    ),
+    ok: true,
+    role: actorRole,
+    demo,
+    actorEmail,
+    actorUserId,
+    ip,
   };
+}
+
+/** Admin console gate — requires admin:access (ADMIN + SUPER_ADMIN). */
+export async function requireAdminActor(
+  req: Request,
+  opts?: { mutate?: boolean; permission?: Permission }
+): Promise<AdminGate> {
+  return requireStaffActor(req, {
+    mutate: opts?.mutate,
+    permission: opts?.permission ?? "admin:access",
+  });
 }
 
 /** Persist security-relevant admin actions. */
@@ -206,7 +244,7 @@ export async function writeAdminAudit(opts: {
   }
 }
 
-/** Ensure demo admin exists. Never escalate arbitrary session roles from the client. */
+/** Ensure bootstrap SUPER_ADMIN exists. Never escalate arbitrary session roles. */
 export async function ensureAdminUsersSynced(opts: {
   actorEmail: string;
   sessionUser?: {
@@ -220,16 +258,21 @@ export async function ensureAdminUsersSynced(opts: {
   if (!db.ok) return { synced: false as const, error: db.error };
 
   const prisma = await getPrisma();
+  const ownerEmail = getAdminEmail();
 
   await prisma.user.upsert({
-    where: { email: getAdminEmail() },
-    update: { role: "ADMIN", isApproved: true, name: "4ward Admin" },
+    where: { email: ownerEmail },
+    update: {
+      role: "SUPER_ADMIN",
+      isApproved: true,
+      name: "4ward Super Admin",
+    },
     create: {
-      clerkId: `admin_${getAdminEmail()}`,
-      name: "4ward Admin",
-      email: getAdminEmail(),
-      username: "admin",
-      role: "ADMIN",
+      clerkId: `admin_${ownerEmail}`,
+      name: "4ward Super Admin",
+      email: ownerEmail,
+      username: "superadmin",
+      role: "SUPER_ADMIN",
       university: "4ward",
       isApproved: true,
     },
@@ -237,12 +280,11 @@ export async function ensureAdminUsersSynced(opts: {
 
   if (opts.sessionUser?.email) {
     const email = opts.sessionUser.email.trim().toLowerCase();
-    // Security: only allowlisted admin emails get ADMIN from sync.
-    const usernameBase =
-      (opts.sessionUser.username ||
-        email.split("@")[0]?.replace(/[^a-z0-9_-]/gi, "") ||
-        "user"
-      ).slice(0, 20);
+    const usernameBase = (
+      opts.sessionUser.username ||
+      email.split("@")[0]?.replace(/[^a-z0-9_-]/gi, "") ||
+      "user"
+    ).slice(0, 20);
 
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) {
@@ -252,7 +294,7 @@ export async function ensureAdminUsersSynced(opts: {
           name: opts.sessionUser.name || undefined,
           university: opts.sessionUser.university || undefined,
           ...(isAdminEmail(email)
-            ? { role: "ADMIN" as AppRole, isApproved: true }
+            ? { role: "SUPER_ADMIN" as AppRole, isApproved: true }
             : {}),
         },
       });
@@ -267,8 +309,9 @@ export async function ensureAdminUsersSynced(opts: {
           name: opts.sessionUser.name || email.split("@")[0] || "User",
           email,
           username,
-          role: isAdminEmail(email) ? "ADMIN" : "BUYER",
-          university: opts.sessionUser.university || "University of Dar es Salaam",
+          role: isAdminEmail(email) ? "SUPER_ADMIN" : "BUYER",
+          university:
+            opts.sessionUser.university || "University of Dar es Salaam",
           isApproved: isAdminEmail(email),
         },
       });

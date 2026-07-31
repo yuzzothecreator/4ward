@@ -13,6 +13,7 @@ import {
   Settings,
   Package,
   BadgeCheck,
+  Headphones,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -88,6 +89,12 @@ const navItems: NavItem[] = [
     permissions: ["dashboard:seller"],
   },
   {
+    href: "/dashboard/support",
+    label: "Support desk",
+    icon: Headphones,
+    permissions: ["support:access"],
+  },
+  {
     href: "/dashboard/admin",
     label: "Admin",
     icon: Shield,
@@ -103,7 +110,7 @@ const navItems: NavItem[] = [
     href: "/dashboard/admin/verification",
     label: "Blue ticks",
     icon: BadgeCheck,
-    permissions: ["admin:users"],
+    permissions: ["admin:approvals"],
   },
 ];
 

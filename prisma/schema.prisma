@@ -11,7 +11,9 @@ datasource db {
 enum Role {
   BUYER
   SELLER
+  SUPPORT
   ADMIN
+  SUPER_ADMIN
 }
 
 enum ProjectStatus {

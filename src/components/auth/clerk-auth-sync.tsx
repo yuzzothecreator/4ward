@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { useAuth, useUser } from "@clerk/nextjs";
 import { useAppStore } from "@/store/use-app-store";
 import { clearAdminToken, ensureAdminSession } from "@/lib/admin-session";
+import { isStaffRole } from "@/lib/rbac";
 
 /**
  * Keeps Zustand profile + Supabase/Postgres User in sync with Clerk.
@@ -16,6 +17,7 @@ export function ClerkAuthSync() {
   const signIn = useAppStore((s) => s.signIn);
   const signOut = useAppStore((s) => s.signOut);
   const setRole = useAppStore((s) => s.setRole);
+  const setVerified = useAppStore((s) => s.setVerified);
   const lastSyncedEmail = useRef<string | null>(null);
   const syncing = useRef(false);
 
@@ -56,7 +58,11 @@ export function ClerkAuthSync() {
             if (res.ok && data.user?.role) {
               setRole(data.user.role);
             }
-            if ((data.user?.role || user.role) === "ADMIN") {
+            if (res.ok && typeof data.user?.verified === "boolean") {
+              setVerified(Boolean(data.user.verified));
+            }
+            const nextRole = data.user?.role || user.role;
+            if (isStaffRole(nextRole)) {
               await ensureAdminSession({
                 email,
                 name: data.user?.name || name,
@@ -67,7 +73,7 @@ export function ClerkAuthSync() {
               clearAdminToken();
             }
           } catch {
-            if (user.role === "ADMIN") {
+            if (isStaffRole(user.role)) {
               try {
                 await ensureAdminSession(user);
               } catch {
@@ -90,7 +96,7 @@ export function ClerkAuthSync() {
       lastSyncedEmail.current = null;
       signOut();
     }
-  }, [isLoaded, isSignedIn, clerkUser, storeUser, signIn, signOut, setRole]);
+  }, [isLoaded, isSignedIn, clerkUser, storeUser, signIn, signOut, setRole, setVerified]);
 
   return null;
 }

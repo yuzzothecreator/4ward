@@ -51,7 +51,13 @@ export async function POST(req: Request) {
       clerkId = userId;
       avatar = clerkUser?.imageUrl || null;
       const metaRole = clerkUser?.publicMetadata?.role;
-      if (metaRole === "BUYER" || metaRole === "SELLER" || metaRole === "ADMIN") {
+      if (
+        metaRole === "BUYER" ||
+        metaRole === "SELLER" ||
+        metaRole === "SUPPORT" ||
+        metaRole === "ADMIN" ||
+        metaRole === "SUPER_ADMIN"
+      ) {
         role = metaRole;
       }
     } else {
@@ -68,10 +74,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "email is required" }, { status: 400 });
     }
 
-    // Allowlisted bootstrap admins always sync as ADMIN
+    // Allowlisted bootstrap owner always syncs as SUPER_ADMIN
     const { isAdminEmail } = await import("@/lib/admin-config");
     if (isAdminEmail(email)) {
-      role = "ADMIN";
+      role = "SUPER_ADMIN";
     }
 
     const intent =
@@ -98,6 +104,26 @@ export async function POST(req: Request) {
       );
     }
 
+    let verified = false;
+    try {
+      const { getPrisma, pingDatabase } = await import("@/lib/prisma");
+      const db = await pingDatabase();
+      if (db.ok) {
+        const prisma = await getPrisma();
+        const badge = await prisma.userBadge.findUnique({
+          where: {
+            userId_badge: {
+              userId: result.user.id,
+              badge: "VERIFIED_CREATOR",
+            },
+          },
+        });
+        verified = Boolean(badge);
+      }
+    } catch {
+      /* ignore */
+    }
+
     return NextResponse.json({
       success: true,
       user: {
@@ -110,6 +136,7 @@ export async function POST(req: Request) {
         avatar: result.user.avatar,
         university: result.user.university,
         isApproved: result.user.isApproved,
+        verified,
       },
       demo: result.demo,
     });

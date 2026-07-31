@@ -177,7 +177,7 @@ export default function ProjectDetailPage() {
                   </div>
                 </Link>
                 <div className="mt-3 flex flex-wrap gap-1">
-                  {project.seller.badges.map((b) => (
+                  {project.seller.badges?.map((b) => (
                     <Badge key={b} variant="success">
                       {b.replace(/_/g, " ")}
                     </Badge>

@@ -1,16 +1,16 @@
 import { RequireRole } from "@/components/auth/require-role";
 
-export default function AdminLayout({
+export default function SupportLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   return (
     <RequireRole
-      roles={["ADMIN", "SUPER_ADMIN"]}
-      permission="admin:access"
+      roles={["SUPPORT", "ADMIN", "SUPER_ADMIN"]}
+      permission="support:access"
       fallbackHref="/dashboard"
-      message="Admin access required."
+      message="Customer service access required."
     >
       {children}
     </RequireRole>

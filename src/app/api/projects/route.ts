@@ -30,11 +30,22 @@ export async function GET() {
             username: true,
             avatar: true,
             university: true,
+            badges: { select: { badge: true } },
           },
         },
       },
     });
-    return NextResponse.json({ projects, count: projects.length, demo: false });
+    return NextResponse.json({
+      projects: projects.map((p) => ({
+        ...p,
+        seller: {
+          ...p.seller,
+          badges: p.seller.badges.map((b) => b.badge),
+        },
+      })),
+      count: projects.length,
+      demo: false,
+    });
   } catch (err) {
     return NextResponse.json(
       {
@@ -50,7 +61,12 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const gate = await assertApiRole(["SELLER", "ADMIN", "BUYER"]);
+    const gate = await assertApiRole([
+      "SELLER",
+      "ADMIN",
+      "SUPER_ADMIN",
+      "BUYER",
+    ]);
     if (!gate.ok) return gate.response;
 
     const ip = req.headers.get("x-forwarded-for") || "anon";

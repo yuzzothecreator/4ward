@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 /** Real platform totals + recent activity for the admin overview. */
 export async function GET(req: Request) {
-  const gate = await requireAdminActor(req);
+  const gate = await requireAdminActor(req, { permission: "admin:access" });
   if (!gate.ok) return gate.response;
 
   const db = await pingDatabase();
@@ -43,7 +43,9 @@ export async function GET(req: Request) {
       prisma.user.count(),
       prisma.user.count({ where: { role: "SELLER" } }),
       prisma.user.count({ where: { role: "BUYER" } }),
-      prisma.user.count({ where: { role: "ADMIN" } }),
+      prisma.user.count({
+        where: { role: { in: ["SUPPORT", "ADMIN", "SUPER_ADMIN"] } },
+      }),
       prisma.project.count(),
       prisma.project.count({
         where: { status: { in: ["PENDING_REVIEW", "DRAFT"] } },

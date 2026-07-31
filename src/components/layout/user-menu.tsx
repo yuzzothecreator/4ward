@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ROLE_LABELS, type AppRole } from "@/lib/rbac";
+import { VerifiedTick } from "@/components/verified-tick";
 import { cn } from "@/lib/utils";
 
 export type UserMenuProfile = {
@@ -30,17 +31,8 @@ export type UserMenuProfile = {
   username?: string;
   role?: AppRole;
   avatarUrl?: string;
+  verified?: boolean;
 };
-
-const menuLinks = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/dashboard/profile", label: "Profile", icon: UserRound },
-  { href: "/dashboard/verification", label: "Get verified", icon: BadgeCheck },
-  { href: "/dashboard/purchases", label: "Purchases", icon: ShoppingBag },
-  { href: "/dashboard/wishlist", label: "Wishlist", icon: Heart },
-  { href: "/dashboard/projects", label: "My projects", icon: Package },
-  { href: "/dashboard/messages", label: "Messages", icon: MessageSquare },
-];
 
 export function UserMenu({
   profile,
@@ -51,16 +43,31 @@ export function UserMenu({
   onSignOut: () => void | Promise<void>;
   className?: string;
 }) {
-  const initials = profile.name
-    .split(/\s+/)
-    .map((p) => p[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase() || "U";
+  const initials =
+    profile.name
+      .split(/\s+/)
+      .map((p) => p[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "U";
 
   const avatarSrc =
     profile.avatarUrl ||
     `https://api.dicebear.com/7.x/avataaars/png?seed=${encodeURIComponent(profile.email || profile.name)}`;
+
+  const menuLinks = [
+    { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/dashboard/profile", label: "Profile", icon: UserRound },
+    {
+      href: "/dashboard/verification",
+      label: profile.verified ? "Verification" : "Get verified",
+      icon: BadgeCheck,
+    },
+    { href: "/dashboard/purchases", label: "Purchases", icon: ShoppingBag },
+    { href: "/dashboard/wishlist", label: "Wishlist", icon: Heart },
+    { href: "/dashboard/projects", label: "My projects", icon: Package },
+    { href: "/dashboard/messages", label: "Messages", icon: MessageSquare },
+  ];
 
   return (
     <DropdownMenu>
@@ -77,8 +84,9 @@ export function UserMenu({
             <AvatarImage src={avatarSrc} alt={profile.name} />
             <AvatarFallback className="text-[10px]">{initials}</AvatarFallback>
           </Avatar>
-          <span className="hidden max-w-[9rem] truncate text-[13px] text-foreground sm:inline">
-            {profile.name}
+          <span className="hidden max-w-[10rem] items-center gap-1 text-[13px] text-foreground sm:inline-flex">
+            <span className="truncate">{profile.name}</span>
+            {profile.verified ? <VerifiedTick /> : null}
           </span>
           <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
         </button>
@@ -87,11 +95,17 @@ export function UserMenu({
       <DropdownMenuContent align="end" className="w-60">
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col gap-0.5">
-            <p className="truncate text-sm font-medium text-foreground">{profile.name}</p>
-            <p className="truncate text-xs text-muted-foreground">{profile.email}</p>
+            <p className="flex items-center gap-1 truncate text-sm font-medium text-foreground">
+              <span className="truncate">{profile.name}</span>
+              {profile.verified ? <VerifiedTick /> : null}
+            </p>
+            <p className="truncate text-xs text-muted-foreground">
+              {profile.email}
+            </p>
             {profile.role ? (
               <p className="pt-0.5 text-[11px] text-muted-foreground">
                 {ROLE_LABELS[profile.role]}
+                {profile.verified ? " · Verified" : ""}
                 {profile.username ? ` · @${profile.username}` : ""}
               </p>
             ) : null}

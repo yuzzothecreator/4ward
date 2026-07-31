@@ -63,7 +63,7 @@ export async function ensureAppUser(input: EnsureAppUserInput) {
   const fallbackClerkId = preferredClerkId || `local_${email}`;
 
   let role: AppRole = isAdminEmail(email)
-    ? "ADMIN"
+    ? "SUPER_ADMIN"
     : normalizeRole(input.role, "BUYER");
   if (input.minRole) {
     role = elevateRole(role, input.minRole);
@@ -99,7 +99,7 @@ export async function ensureAppUser(input: EnsureAppUserInput) {
         university: input.university?.trim() || undefined,
         role: elevateRole(existingByEmail.role as AppRole, role),
         ...(isAdminEmail(email)
-          ? { role: "ADMIN" as AppRole, isApproved: true }
+          ? { role: "SUPER_ADMIN" as AppRole, isApproved: true }
           : {}),
       },
     });

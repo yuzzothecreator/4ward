@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatPrice } from "@/lib/utils";
 import { useAppStore } from "@/store/use-app-store";
-import { DEMO_ADMIN_EMAIL, ROLE_LABELS, type AppRole } from "@/lib/rbac";
+import { DEMO_ADMIN_EMAIL, ROLE_LABELS, hasPermission, type AppRole } from "@/lib/rbac";
 import { adminHeaders } from "@/lib/admin-session";
 import { ensureAdminSessionWithPrompt } from "@/lib/admin-session-client";
 
@@ -84,7 +84,7 @@ export default function AdminPage() {
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    if (!user?.email || user.role !== "ADMIN") {
+    if (!user?.email || !hasPermission(user.role, "admin:access")) {
       setLoading(false);
       return;
     }
@@ -184,7 +184,7 @@ export default function AdminPage() {
     );
   }
 
-  if (user.role !== "ADMIN") {
+  if (!hasPermission(user.role, "admin:access")) {
     return (
       <div className="space-y-2">
         <h1 className="text-2xl font-bold text-foreground">Admin dashboard</h1>
@@ -389,7 +389,7 @@ export default function AdminPage() {
                       {u.email} · {new Date(u.createdAt).toLocaleDateString()}
                     </p>
                   </div>
-                  <Badge variant={u.role === "ADMIN" ? "neon" : "secondary"} className="w-fit shrink-0">
+                  <Badge variant={u.role === "ADMIN" || u.role === "SUPER_ADMIN" ? "neon" : "secondary"} className="w-fit shrink-0">
                     {ROLE_LABELS[u.role]}
                   </Badge>
                 </div>

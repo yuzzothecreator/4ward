@@ -28,7 +28,10 @@ export function getAdminEmail(): string {
   return "admin@4ward.com";
 }
 
-/** Emails allowed to hold ADMIN (comma-separated). */
+/**
+ * Emails allowed to bootstrap as SUPER_ADMIN (comma-separated).
+ * Regular ADMIN / SUPPORT are assigned in-app by a Super Admin.
+ */
 export function getAdminAllowlist(): string[] {
   const raw = (process.env.ADMIN_EMAILS || process.env.ADMIN_EMAIL || "").trim();
   if (!raw) {
@@ -46,6 +49,13 @@ export function isAdminEmail(email: string | null | undefined): boolean {
   const list = getAdminAllowlist();
   if (list.length === 0) return false;
   return list.includes(normalized);
+}
+
+/** Bootstrap owner — always SUPER_ADMIN. */
+export function isSuperAdminEmail(email: string | null | undefined): boolean {
+  if (!email) return false;
+  const normalized = email.trim().toLowerCase();
+  return normalized === getAdminEmail() || isAdminEmail(normalized);
 }
 
 const INSECURE_SECRET_MARKERS = [

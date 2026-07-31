@@ -1,5 +1,11 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
-import { issueAdminSessionToken, requireRateLimit, requireSameOrigin, jsonSecure, clientIp } from "@/lib/security";
+import {
+  issueAdminSessionToken,
+  requireRateLimit,
+  requireSameOrigin,
+  jsonSecure,
+  clientIp,
+} from "@/lib/security";
 import {
   assertAdminSecretsConfigured,
   getAdminEmail,
@@ -10,7 +16,7 @@ import {
 } from "@/lib/admin-config";
 import { getPrisma, pingDatabase } from "@/lib/prisma";
 import { ensureAdminUsersSynced, writeAdminAudit } from "@/lib/admin-auth";
-import { normalizeRole } from "@/lib/rbac";
+import { isStaffRole, normalizeRole, type StaffRole } from "@/lib/rbac";
 import { ensureAppUser } from "@/lib/users";
 
 export const dynamic = "force-dynamic";
@@ -18,13 +24,12 @@ export const dynamic = "force-dynamic";
 const clerkEnabled = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
 
 /**
- * Issue a signed admin session token after verifying the caller is an admin.
+ * Issue a signed staff session token (SUPPORT | ADMIN | SUPER_ADMIN).
  *
- * Allow when email is allowlisted AND any of:
- * - Clerk session with publicMetadata.role = ADMIN
- * - Clerk session as ADMIN_EMAIL (bootstrap owner)
- * - DB user.role = ADMIN
- * - Valid ADMIN_PASSWORD_HASH password
+ * Allow when:
+ * - Allowlisted SUPER_ADMIN email + Clerk / password / DB
+ * - DB role is SUPPORT | ADMIN | SUPER_ADMIN (assigned by Super Admin)
+ * - Clerk publicMetadata staff role matching email
  */
 export async function POST(req: Request) {
   const limited = requireRateLimit(req, "admin-session", 8, 60_000);
@@ -37,7 +42,10 @@ export async function POST(req: Request) {
       assertAdminSecretsConfigured();
     } catch (err) {
       return jsonSecure(
-        { error: err instanceof Error ? err.message : "Admin secrets misconfigured" },
+        {
+          error:
+            err instanceof Error ? err.message : "Admin secrets misconfigured",
+        },
         { status: 503 }
       );
     }
@@ -52,33 +60,12 @@ export async function POST(req: Request) {
       return jsonSecure({ error: "email is required" }, { status: 400 });
     }
 
-    if (!isAdminEmail(email)) {
-      await writeAdminAudit({
-        action: "admin.session.denied",
-        entity: "User",
-        metadata: {
-          email,
-          reason: "not_allowlisted",
-          expected: getAdminEmail(),
-        },
-        ipAddress: clientIp(req),
-      });
-      return jsonSecure(
-        {
-          error: "Not an allowlisted admin account",
-          hint: `Sign in as ${getAdminEmail()} (ADMIN_EMAIL), or add this email to ADMIN_EMAILS and restart the server.`,
-          signedInAs: email,
-          allowlistedAs: getAdminEmail(),
-        },
-        { status: 403 }
-      );
-    }
-
     let allowed = false;
+    let staffRole: StaffRole = "ADMIN";
     let userId: string | undefined;
     let via: "clerk" | "password" | "db" = "db";
 
-    // Prefer live Clerk session for the same allowlisted email
+    // Prefer live Clerk session for the same email
     if (clerkEnabled) {
       const { userId: clerkUserId } = await auth();
       const clerkUser = clerkUserId ? await currentUser() : null;
@@ -88,31 +75,36 @@ export async function POST(req: Request) {
         "";
       const clerkRole = normalizeRole(clerkUser?.publicMetadata?.role, "BUYER");
 
-      if (clerkUserId && clerkEmail === email && isAdminEmail(clerkEmail)) {
-        const isOwner = email === getAdminEmail();
-        if (clerkRole === "ADMIN" || isOwner) {
+      if (clerkUserId && clerkEmail === email) {
+        if (isAdminEmail(email)) {
           allowed = true;
+          staffRole = "SUPER_ADMIN";
+          via = "clerk";
+        } else if (isStaffRole(clerkRole)) {
+          allowed = true;
+          staffRole = clerkRole;
           via = "clerk";
         }
       }
     }
 
-    // DB role ADMIN on allowlisted email
+    // DB staff role (SUPPORT / ADMIN / SUPER_ADMIN)
     if (!allowed) {
       const db = await pingDatabase();
       if (db.ok) {
         const prisma = await getPrisma();
         const row = await prisma.user.findUnique({ where: { email } });
         userId = row?.id;
-        if (row?.role === "ADMIN") {
+        if (row && isStaffRole(row.role)) {
           allowed = true;
+          staffRole = row.role as StaffRole;
           via = "db";
         }
       }
     }
 
-    // Password gate for allowlisted admin
-    if (!allowed && hasAdminPasswordConfigured()) {
+    // Password gate — allowlisted SUPER_ADMIN only
+    if (!allowed && isAdminEmail(email) && hasAdminPasswordConfigured()) {
       if (!password) {
         return jsonSecure(
           {
@@ -130,18 +122,26 @@ export async function POST(req: Request) {
           metadata: { email, reason: "bad_password" },
           ipAddress: clientIp(req),
         });
-        return jsonSecure({ error: "Invalid admin credentials" }, { status: 401 });
+        return jsonSecure(
+          { error: "Invalid admin credentials" },
+          { status: 401 }
+        );
       }
       allowed = true;
+      staffRole = "SUPER_ADMIN";
       via = "password";
     }
 
     // Local-dev fallback without password hash
-    if (!allowed && !isProductionRuntime() && !hasAdminPasswordConfigured()) {
-      if (email === getAdminEmail()) {
-        allowed = true;
-        via = "db";
-      }
+    if (
+      !allowed &&
+      !isProductionRuntime() &&
+      !hasAdminPasswordConfigured() &&
+      email === getAdminEmail()
+    ) {
+      allowed = true;
+      staffRole = "SUPER_ADMIN";
+      via = "db";
     }
 
     if (!allowed) {
@@ -153,35 +153,36 @@ export async function POST(req: Request) {
       });
       return jsonSecure(
         {
-          error: "Not an admin account",
-          hint:
-            "Set Clerk publicMetadata.role to ADMIN, or use the bootstrap admin password.",
+          error: "Not a staff account",
+          hint: `Ask a Super Admin to assign SUPPORT/ADMIN, or sign in as ${getAdminEmail()}.`,
+          signedInAs: email,
         },
         { status: 403 }
       );
     }
 
-    // Ensure a single ADMIN row exists for this email
     const synced = await ensureAppUser({
       email,
-      name: String(body.name || "Admin"),
+      name: String(body.name || "Staff"),
       username: typeof body.username === "string" ? body.username : undefined,
       university:
         typeof body.university === "string" ? body.university : undefined,
-      role: "ADMIN",
-      minRole: "ADMIN",
+      role: staffRole,
+      minRole: staffRole,
     });
     userId = synced.user?.id || userId;
 
-    await ensureAdminUsersSynced({
-      actorEmail: email,
-      sessionUser: {
-        name: String(body.name || "Admin"),
-        email,
-        username: body.username,
-        university: body.university,
-      },
-    });
+    if (isAdminEmail(email)) {
+      await ensureAdminUsersSynced({
+        actorEmail: email,
+        sessionUser: {
+          name: String(body.name || "Super Admin"),
+          email,
+          username: body.username,
+          university: body.university,
+        },
+      });
+    }
 
     const session = issueAdminSessionToken(email);
 
@@ -189,7 +190,7 @@ export async function POST(req: Request) {
       userId,
       action: "admin.session.issued",
       entity: "User",
-      metadata: { email, expiresAt: session.expiresAt, via },
+      metadata: { email, role: staffRole, expiresAt: session.expiresAt, via },
       ipAddress: clientIp(req),
     });
 
@@ -198,12 +199,16 @@ export async function POST(req: Request) {
       token: session.token,
       expiresAt: session.expiresAt,
       expiresIn: session.expiresIn,
+      role: staffRole,
       via,
     });
   } catch (err) {
     return jsonSecure(
       {
-        error: err instanceof Error ? err.message : "Could not create admin session",
+        error:
+          err instanceof Error
+            ? err.message
+            : "Could not create admin session",
       },
       { status: 400 }
     );

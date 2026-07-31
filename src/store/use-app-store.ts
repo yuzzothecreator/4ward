@@ -17,6 +17,8 @@ export type DemoUser = {
   university: string;
   role: AppRole;
   createdAt: string;
+  /** Blue-tick from VERIFIED_CREATOR badge — kept in sync across UI */
+  verified?: boolean;
 };
 
 export type PurchaseRecord = {
@@ -54,7 +56,10 @@ type AppState = {
   signIn: (data: { email: string; name?: string }) => DemoUser;
   signOut: () => void;
   setRole: (role: AppRole) => void;
+  setVerified: (verified: boolean) => void;
   promoteToSeller: () => void;
+  /** Upsert marketplace projects from API (includes seller badges). */
+  upsertListings: (projects: DemoProject[]) => void;
 
   addListing: (
     values: ProjectFormValues,
@@ -88,6 +93,37 @@ function usernameFromEmail(email: string, name: string) {
 
 const DEFAULT_COVER =
   "https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=800&q=80";
+
+function applyVerifiedBadge(
+  badges: string[] | undefined,
+  verified: boolean
+): string[] {
+  const next = new Set(badges || []);
+  if (verified) next.add("VERIFIED_CREATOR");
+  else next.delete("VERIFIED_CREATOR");
+  return [...next];
+}
+
+function patchListingsForSeller(
+  listings: DemoProject[],
+  seller: { email: string; username: string },
+  verified: boolean
+): DemoProject[] {
+  return listings.map((p) => {
+    const match =
+      p.seller.username === seller.username ||
+      p.seller.id === seller.email ||
+      p.seller.id === seller.username;
+    if (!match) return p;
+    return {
+      ...p,
+      seller: {
+        ...p.seller,
+        badges: applyVerifiedBadge(p.seller.badges, verified),
+      },
+    };
+  });
+}
 
 export const useAppStore = create<AppState>()(
   persist(
@@ -151,6 +187,44 @@ export const useAppStore = create<AppState>()(
         set({ user: { ...user, role } });
       },
 
+      setVerified: (verified) => {
+        const user = get().user;
+        if (!user) return;
+        set({
+          user: { ...user, verified },
+          listings: patchListingsForSeller(get().listings, user, verified),
+        });
+      },
+
+      upsertListings: (projects) => {
+        if (!projects.length) return;
+        set((state) => {
+          const byKey = new Map<string, DemoProject>();
+          for (const p of state.listings) {
+            byKey.set(p.id, p);
+            byKey.set(`slug:${p.slug}`, p);
+          }
+          for (const p of projects) {
+            byKey.set(p.id, p);
+            byKey.set(`slug:${p.slug}`, p);
+          }
+          // Dedupe by id
+          const seen = new Set<string>();
+          const merged: DemoProject[] = [];
+          for (const p of byKey.values()) {
+            if (seen.has(p.id)) continue;
+            seen.add(p.id);
+            merged.push(p);
+          }
+          const user = state.user;
+          return {
+            listings: user?.verified
+              ? patchListingsForSeller(merged, user, true)
+              : merged,
+          };
+        });
+      },
+
       promoteToSeller: () => {
         const user = get().user;
         if (!user) return;
@@ -201,7 +275,10 @@ export const useAppStore = create<AppState>()(
             username: user?.username || "creator",
             avatar: `https://api.dicebear.com/7.x/avataaars/png?seed=${encodeURIComponent(user?.email || "creator")}`,
             university: user?.university || "University of Dar es Salaam",
-            badges: ["RISING_DEVELOPER"],
+            badges: applyVerifiedBadge(
+              ["RISING_DEVELOPER"],
+              Boolean(user?.verified)
+            ),
           },
           createdAt: new Date().toISOString(),
         };
@@ -211,9 +288,13 @@ export const useAppStore = create<AppState>()(
       },
 
       getCatalog: () => {
-        const listed = get().listings.filter(
+        const user = get().user;
+        let listed = get().listings.filter(
           (p) => p.status === "PUBLISHED" || p.status === "APPROVED"
         );
+        if (user?.verified) {
+          listed = patchListingsForSeller(listed, user, true);
+        }
         const ids = new Set(listed.map((p) => p.id));
         return [...listed, ...demoProjects.filter((p) => !ids.has(p.id))];
       },

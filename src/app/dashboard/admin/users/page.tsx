@@ -13,6 +13,9 @@ import {
   type AppRole,
   ROLE_LABELS,
   DEMO_ADMIN_EMAIL,
+  assignableRolesFor,
+  hasPermission,
+  isStaffRole,
 } from "@/lib/rbac";
 import { adminHeaders } from "@/lib/admin-session";
 import { ensureAdminSessionWithPrompt } from "@/lib/admin-session-client";
@@ -51,6 +54,9 @@ export default function AdminUsersPage() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [demo, setDemo] = useState(false);
+  const [assignableRoles, setAssignableRoles] = useState<AppRole[]>(
+    assignableRolesFor(current?.role)
+  );
 
   const actorEmail = current?.email || "";
 
@@ -83,6 +89,11 @@ export default function AdminUsersPage() {
       }
       setUsers(data.users || []);
       setDemo(Boolean(data.demo));
+      if (Array.isArray(data.assignableRoles)) {
+        setAssignableRoles(data.assignableRoles);
+      } else {
+        setAssignableRoles(assignableRolesFor(current?.role));
+      }
       setMessage(
         data.total
           ? `Loaded ${data.total} user${data.total === 1 ? "" : "s"} from the database.`
@@ -219,14 +230,18 @@ export default function AdminUsersPage() {
     );
   }
 
-  if (current.role !== "ADMIN") {
+  if (!hasPermission(current.role, "admin:users")) {
     return (
       <div className="space-y-3">
         <h1 className="text-2xl font-bold text-foreground">User management</h1>
-        <p className="text-muted">Admin role required. Current role: {ROLE_LABELS[current.role]}.</p>
+        <p className="text-muted">
+          Admin role required. Current role: {ROLE_LABELS[current.role]}.
+        </p>
       </div>
     );
   }
+
+  const canAssignStaff = hasPermission(current.role, "admin:roles");
 
   return (
     <div className="space-y-6">
@@ -235,6 +250,9 @@ export default function AdminUsersPage() {
           <h1 className="text-2xl font-bold text-foreground">User management</h1>
           <p className="text-muted">
             Live database users — roles, approvals, and profile fields.
+            {canAssignStaff
+              ? " As Super Admin you can promote Support / Admin."
+              : " You can approve sellers; only Super Admin assigns staff roles."}
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={loadUsers} disabled={loading}>
@@ -319,7 +337,7 @@ export default function AdminUsersPage() {
                       <div className="flex flex-wrap gap-2 pt-1">
                         <Badge
                           variant={
-                            u.role === "ADMIN"
+                            isStaffRole(u.role)
                               ? "neon"
                               : u.role === "SELLER"
                                 ? "default"
@@ -345,7 +363,7 @@ export default function AdminUsersPage() {
                           Approve
                         </Button>
                       )}
-                      {u.isApproved && u.role !== "ADMIN" && (
+                      {u.isApproved && !isStaffRole(u.role) && (
                         <Button
                           size="sm"
                           variant="outline"
@@ -395,7 +413,10 @@ export default function AdminUsersPage() {
                       <div>
                         <Label>Role</Label>
                         <div className="mt-1.5 flex flex-wrap gap-1">
-                          {APP_ROLES.map((role) => (
+                          {(assignableRoles.length
+                            ? assignableRoles
+                            : APP_ROLES
+                          ).map((role) => (
                             <Button
                               key={role}
                               size="sm"

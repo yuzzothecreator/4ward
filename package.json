@@ -13,7 +13,8 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:apply": "node scripts/apply-schema.js",
     "health": "node scripts/health-check.js",
-    "admin:bootstrap": "node scripts/admin-bootstrap.js"
+    "admin:bootstrap": "node scripts/admin-bootstrap.js",
+    "db:staff-roles": "node scripts/add-staff-roles.js"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.5.22",

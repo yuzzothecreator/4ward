@@ -30,7 +30,11 @@ type VerificationRow = {
 
 export default function AdminVerificationPage() {
   return (
-    <RequireRole allowed={["ADMIN"]} fallbackHref="/dashboard">
+    <RequireRole
+      roles={["ADMIN", "SUPER_ADMIN"]}
+      permission="admin:approvals"
+      fallbackHref="/dashboard"
+    >
       <AdminVerificationInner />
     </RequireRole>
   );

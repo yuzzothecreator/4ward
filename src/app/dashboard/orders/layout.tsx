@@ -7,7 +7,7 @@ export default function SellerOrdersLayout({
 }) {
   return (
     <RequireRole
-      roles={["SELLER", "ADMIN"]}
+      roles={["SELLER", "ADMIN", "SUPER_ADMIN"]}
       permission="dashboard:seller"
       fallbackHref="/dashboard"
       message="Seller access required."

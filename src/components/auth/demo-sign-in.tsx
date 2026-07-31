@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAppStore } from "@/store/use-app-store";
-import { DEMO_ADMIN_EMAIL, defaultRedirectForRole } from "@/lib/rbac";
+import { DEMO_ADMIN_EMAIL, defaultRedirectForRole, isStaffRole } from "@/lib/rbac";
 import { clearAdminToken, ensureAdminSession } from "@/lib/admin-session";
 
 function DemoSignInForm() {
@@ -32,7 +32,7 @@ function DemoSignInForm() {
     setLoading(true);
     try {
       const user = signIn({ email });
-      if (user.role === "ADMIN") {
+      if (isStaffRole(user.role)) {
         await ensureAdminSession({ ...user, password });
       } else {
         clearAdminToken();

@@ -77,7 +77,7 @@ async function upsertDbAdmin(email, name) {
 
   if (existing.rows.length) {
     await c.query(
-      `UPDATE "User" SET role = 'ADMIN', "isApproved" = true, name = $2, "updatedAt" = NOW() WHERE email = $1`,
+      `UPDATE "User" SET role = 'SUPER_ADMIN', "isApproved" = true, name = $2, "updatedAt" = NOW() WHERE email = $1`,
       [email, name]
     );
   } else {
@@ -90,7 +90,7 @@ async function upsertDbAdmin(email, name) {
         id, "clerkId", name, email, username, role, "isApproved",
         "affiliateCode", "createdAt", "updatedAt", skills
       ) VALUES (
-        $1, $2, $3, $4, $5, 'ADMIN', true, $6, NOW(), NOW(), ARRAY[]::text[]
+        $1, $2, $3, $4, $5, 'SUPER_ADMIN', true, $6, NOW(), NOW(), ARRAY[]::text[]
       )
       `,
       [
@@ -105,7 +105,7 @@ async function upsertDbAdmin(email, name) {
   }
 
   await c.end();
-  console.log(`DB: ensured ADMIN role for ${email}`);
+  console.log(`DB: ensured SUPER_ADMIN role for ${email}`);
 }
 
 async function main() {
@@ -165,7 +165,7 @@ async function main() {
   console.log(`Session secret:  ${sessionSecret.slice(0, 10)}… (fp ${secretFp})`);
   console.log("\nClerk (recommended in production):");
   console.log("  1. Sign up / sign in with this email in Clerk");
-  console.log('  2. Clerk Dashboard → User → Public metadata: { "role": "ADMIN" }');
+  console.log('  2. Clerk Dashboard → User → Public metadata: { "role": "SUPER_ADMIN" }');
   console.log("  3. Restart the server / redeploy");
   console.log("================================================================\n");
 }

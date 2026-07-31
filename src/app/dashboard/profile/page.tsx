@@ -15,10 +15,11 @@ import { ROLE_LABELS } from "@/lib/rbac";
 
 export default function ProfilePage() {
   const user = useAppStore((s) => s.user);
+  const setVerified = useAppStore((s) => s.setVerified);
   const [skills, setSkills] = useState(["Next.js", "TypeScript", "Node.js"]);
   const [skillInput, setSkillInput] = useState("");
   const [saved, setSaved] = useState(false);
-  const [verified, setVerified] = useState(false);
+  const verified = Boolean(user?.verified);
 
   useEffect(() => {
     if (!user?.email) return;
@@ -29,12 +30,12 @@ export default function ProfilePage() {
         if (!cancelled) setVerified(Boolean(data.verified));
       })
       .catch(() => {
-        if (!cancelled) setVerified(false);
+        /* keep store value */
       });
     return () => {
       cancelled = true;
     };
-  }, [user?.email]);
+  }, [user?.email, setVerified]);
 
   if (!user) {
     return (

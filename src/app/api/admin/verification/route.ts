@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
  * GET /api/admin/verification — list seller blue-tick requests.
  */
 export async function GET(req: Request) {
-  const gate = await requireAdminActor(req);
+  const gate = await requireAdminActor(req, { permission: "admin:approvals" });
   if (!gate.ok) return gate.response;
 
   const db = await pingDatabase();
@@ -91,7 +91,10 @@ export async function GET(req: Request) {
  * Body: { id, action: "APPROVE" | "REJECT", adminNote? }
  */
 export async function PATCH(req: Request) {
-  const gate = await requireAdminActor(req, { mutate: true });
+  const gate = await requireAdminActor(req, {
+    mutate: true,
+    permission: "admin:approvals",
+  });
   if (!gate.ok) return gate.response;
 
   const db = await pingDatabase();

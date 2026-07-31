@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ClerkWelcomeGate } from "@/components/auth/clerk-welcome-gate";
 import { useAppStore } from "@/store/use-app-store";
+import { hasPermission, isStaffRole } from "@/lib/rbac";
 
 const clerkEnabled = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
 
@@ -40,14 +41,23 @@ function WelcomeInner() {
     );
   }
 
-  if (storeUser?.role === "ADMIN") {
+  if (storeUser && isStaffRole(storeUser.role)) {
+    const adminHome = hasPermission(storeUser.role, "admin:access")
+      ? "/dashboard/admin"
+      : "/dashboard/support";
     return (
       <div className="mx-auto flex min-h-[70vh] max-w-lg flex-col items-center justify-center px-4 py-16 text-center">
-        <h1 className="text-2xl font-bold text-foreground">Welcome back, admin</h1>
-        <p className="mt-2 text-sm text-muted">Jump into admin tools or the marketplace.</p>
+        <h1 className="text-2xl font-bold text-foreground">Welcome back</h1>
+        <p className="mt-2 text-sm text-muted">
+          Jump into your staff tools or the marketplace.
+        </p>
         <div className="mt-8 flex w-full flex-col gap-3 sm:flex-row">
-          <Link href="/dashboard/admin" className="flex-1">
-            <Button className="w-full">Admin dashboard</Button>
+          <Link href={adminHome} className="flex-1">
+            <Button className="w-full">
+              {hasPermission(storeUser.role, "admin:access")
+                ? "Admin dashboard"
+                : "Support desk"}
+            </Button>
           </Link>
           <Link href="/marketplace" className="flex-1">
             <Button variant="secondary" className="w-full">

@@ -1,20 +1,29 @@
 import { getPrisma, pingDatabase } from "@/lib/prisma";
 import {
   ensureAdminUsersSynced,
-  requireAdminActor,
+  requireStaffActor,
   writeAdminAudit,
 } from "@/lib/admin-auth";
-import { isAppRole, type AppRole } from "@/lib/rbac";
+import {
+  assignableRolesFor,
+  canAssignRole,
+  isAppRole,
+  isStaffRole,
+  type AppRole,
+} from "@/lib/rbac";
 import { jsonSecure, sanitizeText } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
 
 /**
  * GET /api/admin/users
- * Requires signed admin session (x-admin-token) or Clerk ADMIN.
+ * ADMIN+ : full manage list
+ * SUPPORT : read-only via support:users:view
  */
 export async function GET(req: Request) {
-  const gate = await requireAdminActor(req);
+  const gate = await requireStaffActor(req, {
+    permission: "support:users:view",
+  });
   if (!gate.ok) return gate.response;
 
   const db = await pingDatabase();
@@ -27,17 +36,23 @@ export async function GET(req: Request) {
 
   try {
     const url = new URL(req.url);
-    await ensureAdminUsersSynced({
-      actorEmail: gate.actorEmail,
-      sessionUser: {
-        name: sanitizeText(url.searchParams.get("sessionName") || "Admin", 80),
-        email: gate.actorEmail,
-        username: sanitizeText(url.searchParams.get("sessionUsername") || "", 40) || undefined,
-        university:
-          sanitizeText(url.searchParams.get("sessionUniversity") || "", 120) ||
-          undefined,
-      },
-    });
+    if (gate.role === "SUPER_ADMIN" || gate.role === "ADMIN") {
+      await ensureAdminUsersSynced({
+        actorEmail: gate.actorEmail,
+        sessionUser: {
+          name: sanitizeText(url.searchParams.get("sessionName") || "Admin", 80),
+          email: gate.actorEmail,
+          username:
+            sanitizeText(url.searchParams.get("sessionUsername") || "", 40) ||
+            undefined,
+          university:
+            sanitizeText(
+              url.searchParams.get("sessionUniversity") || "",
+              120
+            ) || undefined,
+        },
+      });
+    }
 
     const prisma = await getPrisma();
     const users = await prisma.user.findMany({
@@ -80,6 +95,9 @@ export async function GET(req: Request) {
       total: users.length,
       demo: gate.demo,
       actorEmail: gate.actorEmail,
+      actorRole: gate.role,
+      assignableRoles: assignableRolesFor(gate.role),
+      canEdit: gate.role === "ADMIN" || gate.role === "SUPER_ADMIN",
     });
   } catch (err) {
     console.error("[admin.users.list]", err);
@@ -94,7 +112,10 @@ export async function GET(req: Request) {
 }
 
 export async function PATCH(req: Request) {
-  const gate = await requireAdminActor(req, { mutate: true });
+  const gate = await requireStaffActor(req, {
+    mutate: true,
+    permission: "admin:users",
+  });
   if (!gate.ok) return gate.response;
 
   try {
@@ -124,6 +145,18 @@ export async function PATCH(req: Request) {
       if (!isAppRole(body.role)) {
         return jsonSecure({ error: "Invalid role" }, { status: 400 });
       }
+      if (!canAssignRole(gate.role, body.role)) {
+        return jsonSecure(
+          {
+            error: "You cannot assign that role",
+            hint:
+              gate.role === "SUPER_ADMIN"
+                ? undefined
+                : "Only Super Admin can assign Support / Admin / Super Admin.",
+          },
+          { status: 403 }
+        );
+      }
       data.role = body.role;
     }
     if (typeof body.isApproved === "boolean") data.isApproved = body.isApproved;
@@ -147,17 +180,29 @@ export async function PATCH(req: Request) {
       return jsonSecure({ error: "User not found" }, { status: 404 });
     }
 
+    // Non–super-admin cannot edit existing staff accounts
     if (
-      existing.email.toLowerCase() === gate.actorEmail.toLowerCase() &&
-      data.role &&
-      data.role !== "ADMIN"
+      gate.role !== "SUPER_ADMIN" &&
+      isStaffRole(existing.role) &&
+      (data.role || data.isApproved !== undefined)
     ) {
-      const otherAdmins = await prisma.user.count({
-        where: { role: "ADMIN", id: { not: userId } },
+      return jsonSecure(
+        { error: "Only Super Admin can modify staff accounts" },
+        { status: 403 }
+      );
+    }
+
+    if (
+      existing.role === "SUPER_ADMIN" &&
+      data.role &&
+      data.role !== "SUPER_ADMIN"
+    ) {
+      const otherOwners = await prisma.user.count({
+        where: { role: "SUPER_ADMIN", id: { not: userId } },
       });
-      if (otherAdmins === 0) {
+      if (otherOwners === 0) {
         return jsonSecure(
-          { error: "Cannot demote the only admin account" },
+          { error: "Cannot demote the only Super Admin" },
           { status: 400 }
         );
       }
@@ -184,7 +229,11 @@ export async function PATCH(req: Request) {
       action: "admin.user.update",
       entity: "User",
       entityId: userId,
-      metadata: { changes: data, targetEmail: existing.email },
+      metadata: {
+        changes: data,
+        targetEmail: existing.email,
+        actorRole: gate.role,
+      },
       ipAddress: gate.ip,
     });
 
@@ -208,7 +257,10 @@ export async function PATCH(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const gate = await requireAdminActor(req, { mutate: true });
+  const gate = await requireStaffActor(req, {
+    mutate: true,
+    permission: "admin:access",
+  });
   if (!gate.ok) return gate.response;
 
   try {
@@ -219,8 +271,10 @@ export async function POST(req: Request) {
         ? {
             name: sanitizeText(body.user.name || "Admin", 80),
             email: gate.actorEmail,
-            username: sanitizeText(body.user.username || "", 40) || undefined,
-            university: sanitizeText(body.user.university || "", 120) || undefined,
+            username:
+              sanitizeText(body.user.username || "", 40) || undefined,
+            university:
+              sanitizeText(body.user.university || "", 120) || undefined,
           }
         : { name: "Admin", email: gate.actorEmail },
     });

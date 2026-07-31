@@ -24,7 +24,8 @@ type RequestState = {
 export default function VerificationPage() {
   const user = useAppStore((s) => s.user);
   const promoteToSeller = useAppStore((s) => s.promoteToSeller);
-  const [verified, setVerified] = useState(false);
+  const setStoreVerified = useAppStore((s) => s.setVerified);
+  const verified = Boolean(user?.verified);
   const [request, setRequest] = useState<RequestState | null>(null);
   const [message, setMessage] = useState("");
   const [evidenceUrl, setEvidenceUrl] = useState("");
@@ -45,14 +46,14 @@ export default function VerificationPage() {
         `/api/verification?email=${encodeURIComponent(user.email)}`
       );
       const data = await res.json();
-      setVerified(Boolean(data.verified));
+      setStoreVerified(Boolean(data.verified));
       setRequest(data.request || null);
     } catch {
       setError("Could not load verification status");
     } finally {
       setLoading(false);
     }
-  }, [user?.email]);
+  }, [user?.email, setStoreVerified]);
 
   useEffect(() => {
     void load();

@@ -14,7 +14,7 @@ type RequireRoleProps = {
   children: React.ReactNode;
   /** At least one of these roles is required */
   roles?: AppRole[];
-  /** At least one permission is required (checked against demo user role) */
+  /** At least one permission is required */
   permission?: Permission;
   /** Where to send unauthorized users */
   fallbackHref?: string;
@@ -23,8 +23,7 @@ type RequireRoleProps = {
 };
 
 /**
- * Client RBAC gate for demo auth.
- * When Clerk is enabled, middleware/API enforce server-side; this is a soft UI check.
+ * Client RBAC gate — checks store user role/permissions (works with Clerk sync + demo).
  */
 export function RequireRole({
   children,
@@ -38,20 +37,20 @@ export function RequireRole({
   const clerkEnabled = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
 
   const allowed =
-    clerkEnabled ||
-    (user &&
-      ((roles ? roleAllowed(user.role, roles) : true) &&
-        (permission ? hasPermission(user.role, permission) : true)));
+    !!user &&
+    (roles ? roleAllowed(user.role, roles) : true) &&
+    (permission ? hasPermission(user.role, permission) : true);
 
   useEffect(() => {
-    if (clerkEnabled) return;
     if (!user) {
-      const next = encodeURIComponent(
-        typeof window !== "undefined"
-          ? window.location.pathname + window.location.search
-          : "/dashboard"
-      );
-      router.replace(`/sign-in?next=${next}`);
+      if (!clerkEnabled) {
+        const next = encodeURIComponent(
+          typeof window !== "undefined"
+            ? window.location.pathname + window.location.search
+            : "/dashboard"
+        );
+        router.replace(`/sign-in?next=${next}`);
+      }
       return;
     }
     if (!allowed) {
@@ -59,9 +58,17 @@ export function RequireRole({
     }
   }, [user, allowed, clerkEnabled, router, fallbackHref]);
 
-  if (clerkEnabled) return <>{children}</>;
+  if (!user) {
+    return (
+      <div className="flex min-h-[40vh] flex-col items-center justify-center gap-2 px-4 text-center">
+        <p className="text-sm text-muted">
+          {clerkEnabled ? "Loading your account…" : message}
+        </p>
+      </div>
+    );
+  }
 
-  if (!user || !allowed) {
+  if (!allowed) {
     return (
       <div className="flex min-h-[40vh] flex-col items-center justify-center gap-2 px-4 text-center">
         <p className="text-sm text-muted">{message}</p>
