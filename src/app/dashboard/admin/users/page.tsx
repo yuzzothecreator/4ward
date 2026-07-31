@@ -54,6 +54,9 @@ export default function AdminUsersPage() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [demo, setDemo] = useState(false);
+  const [actorRole, setActorRole] = useState<AppRole | null>(
+    current?.role ?? null
+  );
   const [assignableRoles, setAssignableRoles] = useState<AppRole[]>(
     assignableRolesFor(current?.role)
   );
@@ -89,6 +92,7 @@ export default function AdminUsersPage() {
       }
       setUsers(data.users || []);
       setDemo(Boolean(data.demo));
+      if (data.actorRole) setActorRole(data.actorRole);
       if (Array.isArray(data.assignableRoles)) {
         setAssignableRoles(data.assignableRoles);
       } else {
@@ -139,22 +143,32 @@ export default function AdminUsersPage() {
     setSavingId(u.id);
     setError("");
     try {
+      const payload: Record<string, unknown> = {
+        userId: u.id,
+        name: editDraft.name,
+        university: editDraft.university,
+        isApproved: editDraft.isApproved,
+      };
+      // Only send role when it actually changes and is allowed for this actor
+      if (
+        editDraft.role !== u.role &&
+        assignableRoles.includes(editDraft.role)
+      ) {
+        payload.role = editDraft.role;
+      }
+
       const res = await fetch("/api/admin/users", {
         method: "PATCH",
         headers: adminHeaders({
           "Content-Type": "application/json",
         }),
-        body: JSON.stringify({
-          userId: u.id,
-          name: editDraft.name,
-          university: editDraft.university,
-          role: editDraft.role,
-          isApproved: editDraft.isApproved,
-        }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "Update failed");
+        setError(
+          [data.error, data.hint].filter(Boolean).join(" — ") || "Update failed"
+        );
         return;
       }
       setUsers((prev) =>
@@ -187,20 +201,25 @@ export default function AdminUsersPage() {
     if (!actorEmail) return;
     setSavingId(u.id);
     try {
+      const payload: Record<string, unknown> = {
+        userId: u.id,
+        isApproved: approved,
+      };
+      if (approved && u.role === "BUYER" && assignableRoles.includes("SELLER")) {
+        payload.role = "SELLER";
+      }
       const res = await fetch("/api/admin/users", {
         method: "PATCH",
         headers: adminHeaders({
           "Content-Type": "application/json",
         }),
-        body: JSON.stringify({
-          userId: u.id,
-          isApproved: approved,
-          role: approved && u.role === "BUYER" ? "SELLER" : u.role,
-        }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "Approve failed");
+        setError(
+          [data.error, data.hint].filter(Boolean).join(" — ") || "Approve failed"
+        );
         return;
       }
       setUsers((prev) =>
@@ -253,6 +272,17 @@ export default function AdminUsersPage() {
             {canAssignStaff
               ? " As Super Admin you can promote Support / Admin."
               : " You can approve sellers; only Super Admin assigns staff roles."}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Signed in as {actorEmail}
+            {actorRole ? ` · ${ROLE_LABELS[actorRole]}` : ""}
+            {!canAssignStaff ? (
+              <>
+                {" "}
+                · To assign Support/Admin, sign in as{" "}
+                <span className="text-foreground">{DEMO_ADMIN_EMAIL}</span>
+              </>
+            ) : null}
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={loadUsers} disabled={loading}>
@@ -412,10 +442,13 @@ export default function AdminUsersPage() {
                       </div>
                       <div>
                         <Label>Role</Label>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Current: {ROLE_LABELS[editDraft.role]}
+                        </p>
                         <div className="mt-1.5 flex flex-wrap gap-1">
-                          {(assignableRoles.length
+                          {(assignableRoles.length > 0
                             ? assignableRoles
-                            : APP_ROLES
+                            : []
                           ).map((role) => (
                             <Button
                               key={role}
@@ -430,6 +463,11 @@ export default function AdminUsersPage() {
                               {ROLE_LABELS[role]}
                             </Button>
                           ))}
+                          {assignableRoles.length === 0 ? (
+                            <p className="text-xs text-muted">
+                              You cannot change roles with your account.
+                            </p>
+                          ) : null}
                         </div>
                       </div>
                       <div>

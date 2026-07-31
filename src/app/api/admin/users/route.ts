@@ -11,6 +11,7 @@ import {
   isStaffRole,
   type AppRole,
 } from "@/lib/rbac";
+import { getAdminEmail } from "@/lib/admin-config";
 import { jsonSecure, sanitizeText } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
@@ -141,23 +142,8 @@ export async function PATCH(req: Request) {
       bio?: string | null;
     } = {};
 
-    if (body.role !== undefined) {
-      if (!isAppRole(body.role)) {
-        return jsonSecure({ error: "Invalid role" }, { status: 400 });
-      }
-      if (!canAssignRole(gate.role, body.role)) {
-        return jsonSecure(
-          {
-            error: "You cannot assign that role",
-            hint:
-              gate.role === "SUPER_ADMIN"
-                ? undefined
-                : "Only Super Admin can assign Support / Admin / Super Admin.",
-          },
-          { status: 403 }
-        );
-      }
-      data.role = body.role;
+    if (body.role !== undefined && !isAppRole(body.role)) {
+      return jsonSecure({ error: "Invalid role" }, { status: 400 });
     }
     if (typeof body.isApproved === "boolean") data.isApproved = body.isApproved;
     if (typeof body.name === "string" && body.name.trim()) {
@@ -170,14 +156,35 @@ export async function PATCH(req: Request) {
       data.bio = sanitizeText(body.bio, 500) || null;
     }
 
-    if (Object.keys(data).length === 0) {
-      return jsonSecure({ error: "No changes provided" }, { status: 400 });
-    }
-
     const prisma = await getPrisma();
     const existing = await prisma.user.findUnique({ where: { id: userId } });
     if (!existing) {
       return jsonSecure({ error: "User not found" }, { status: 404 });
+    }
+
+    if (body.role !== undefined && isAppRole(body.role)) {
+      const roleUnchanged = (existing.role as AppRole) === body.role;
+      if (!roleUnchanged) {
+        if (!canAssignRole(gate.role, body.role)) {
+          return jsonSecure(
+            {
+              error: "You cannot assign that role",
+              hint:
+                gate.role === "SUPER_ADMIN"
+                  ? undefined
+                  : `Your role is ${gate.role}. Only Super Admin (${getAdminEmail()}) can assign Support / Admin / Super Admin.`,
+              actorRole: gate.role,
+              attemptedRole: body.role,
+            },
+            { status: 403 }
+          );
+        }
+        data.role = body.role;
+      }
+    }
+
+    if (Object.keys(data).length === 0) {
+      return jsonSecure({ error: "No changes provided" }, { status: 400 });
     }
 
     // Non–super-admin cannot edit existing staff accounts
