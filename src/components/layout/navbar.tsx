@@ -7,6 +7,7 @@ import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { UserMenu } from "@/components/layout/user-menu";
+import { NotificationBell } from "@/components/layout/notification-bell";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/use-app-store";
 
@@ -198,11 +199,13 @@ export function Navbar() {
 
         <div className="hidden items-center gap-2 md:flex">
           <ThemeToggle />
+          <NotificationBell />
           <DesktopAuth />
         </div>
 
         <div className="flex shrink-0 items-center gap-1 md:hidden">
           <ThemeToggle />
+          <NotificationBell />
           <SignedInMenu />
           <button
             className="rounded-md p-2 text-muted hover:text-foreground"

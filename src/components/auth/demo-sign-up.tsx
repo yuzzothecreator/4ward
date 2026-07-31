@@ -9,6 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAppStore } from "@/store/use-app-store";
 import { DEMO_ADMIN_EMAIL } from "@/lib/rbac";
+import { UniversitySelect } from "@/components/university-select";
+import { canonicalizeInstitution } from "@/lib/tanzania-institutions";
 
 export function DemoSignUp() {
   const router = useRouter();
@@ -35,7 +37,7 @@ export function DemoSignUp() {
     const user = signUp({
       name,
       email,
-      university: university || undefined,
+      university: canonicalizeInstitution(university) || university || undefined,
       intent,
     });
     const next =
@@ -114,14 +116,15 @@ export function DemoSignUp() {
             />
           </div>
           <div>
-            <Label htmlFor="university">University (optional)</Label>
-            <Input
-              id="university"
-              className="mt-1.5"
-              placeholder="University of Dar es Salaam"
-              value={university}
-              onChange={(e) => setUniversity(e.target.value)}
-            />
+            <Label htmlFor="university">University / institute</Label>
+            <div className="mt-1.5">
+              <UniversitySelect
+                id="university"
+                value={university}
+                onChange={setUniversity}
+                placeholder="Select campus (optional)"
+              />
+            </div>
           </div>
           <div>
             <Label htmlFor="password">Password</Label>

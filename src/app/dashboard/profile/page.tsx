@@ -12,6 +12,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { VerifiedTick } from "@/components/verified-tick";
 import { useAppStore } from "@/store/use-app-store";
 import { ROLE_LABELS } from "@/lib/rbac";
+import { UniversitySelect } from "@/components/university-select";
+import { canonicalizeInstitution } from "@/lib/tanzania-institutions";
 
 export default function ProfilePage() {
   const user = useAppStore((s) => s.user);
@@ -161,16 +163,16 @@ export default function ProfilePage() {
             />
           </div>
           <div>
-            <Label>University</Label>
-            <Input
-              className="mt-1.5"
-              value={university}
-              onChange={(e) => setUniversity(e.target.value)}
-              placeholder="e.g. University of Dar es Salaam"
-            />
+            <Label>University / institute</Label>
+            <div className="mt-1.5">
+              <UniversitySelect
+                value={university}
+                onChange={setUniversity}
+              />
+            </div>
             <p className="mt-1 text-xs text-muted-foreground">
-              Used for campus exclusivity: one buyer per university per project
-              for 4 months.
+              Stored as short code (e.g. UDSM). Used for campus exclusivity — one
+              buyer per campus per project for 4 months.
             </p>
           </div>
           <div>

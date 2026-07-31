@@ -1,4 +1,5 @@
 import { getPrisma, pingDatabase } from "@/lib/prisma";
+import { canonicalizeInstitution } from "@/lib/tanzania-institutions";
 
 /** Campus presentation exclusivity window */
 export const UNIVERSITY_EXCLUSIVITY_MONTHS = 4;
@@ -14,9 +15,10 @@ export type UniversityLockResult =
       university?: string;
     };
 
-/** Normalize campus names so "UDSM " and "udsm" match. */
+/** Normalize campus names so "UDSM" and "University of Dar es Salaam" match. */
 export function normalizeUniversity(value: string | null | undefined): string {
-  return (value || "")
+  const canonical = canonicalizeInstitution(value);
+  return (canonical || "")
     .trim()
     .toLowerCase()
     .replace(/\s+/g, " ");

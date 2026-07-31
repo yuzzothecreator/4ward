@@ -10,7 +10,21 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 export async function getPrisma(): Promise<PrismaClient> {
-  if (globalForPrisma.prisma) return globalForPrisma.prisma;
+  if (globalForPrisma.prisma) {
+    // Drop stale singleton after prisma generate adds new models (dev HMR)
+    const cached = globalForPrisma.prisma as PrismaClient & {
+      projectRequest?: { findMany?: unknown };
+    };
+    if (typeof cached.projectRequest?.findMany === "function") {
+      return globalForPrisma.prisma;
+    }
+    try {
+      await globalForPrisma.prisma.$disconnect();
+    } catch {
+      /* ignore */
+    }
+    globalForPrisma.prisma = undefined;
+  }
 
   const { PrismaClient } = await import("@/generated/prisma/client");
   const { PrismaPg } = await import("@prisma/adapter-pg");

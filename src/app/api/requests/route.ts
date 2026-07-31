@@ -222,6 +222,23 @@ export async function POST(req: Request) {
       },
     });
 
+    // Notify sellers/developers so they see a pop-up for this buyer need
+    try {
+      const { notifySellersOfBuyerRequest } = await import(
+        "@/lib/request-notifications"
+      );
+      await notifySellersOfBuyerRequest({
+        requestId: row.id,
+        buyerId: me.user.id,
+        buyerName: me.user.name,
+        title: row.title,
+        university: row.university,
+        category: row.category,
+      });
+    } catch (notifyErr) {
+      console.warn("[requests.post] seller notify failed", notifyErr);
+    }
+
     return jsonSecure({ success: true, request: mapRequest(row) });
   } catch (err) {
     console.error("[requests.post]", err);
