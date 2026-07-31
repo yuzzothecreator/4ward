@@ -9,6 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { ProjectCard } from "@/components/projects/project-card";
 import { filterCatalog, useAppStore } from "@/store/use-app-store";
 import { CATEGORIES, TECHNOLOGIES } from "@/lib/constants";
+import { ListingTypeBadge } from "@/components/projects/listing-badges";
+import { cn } from "@/lib/utils";
 
 export default function MarketplacePage() {
   const searchParams = useSearchParams();
@@ -19,6 +21,9 @@ export default function MarketplacePage() {
   const [tech, setTech] = useState("");
   const [university, setUniversity] = useState("");
   const [minRating, setMinRating] = useState(0);
+  const [listingType, setListingType] = useState<"all" | "CAMPUS" | "MARKET">(
+    (searchParams.get("type") as "CAMPUS" | "MARKET") || "all"
+  );
   const [priceRange, setPriceRange] = useState<"all" | "free" | "paid" | "under100k" | "over100k">("all");
   const [showFilters, setShowFilters] = useState(false);
 
@@ -41,11 +46,22 @@ export default function MarketplacePage() {
       category: category || undefined,
       tech: tech || undefined,
       university: university || undefined,
+      listingType: listingType === "all" ? undefined : listingType,
       minPrice,
       maxPrice,
       minRating: minRating || undefined,
     });
-  }, [q, category, tech, university, minRating, priceRange, listings, getCatalog]);
+  }, [
+    q,
+    category,
+    tech,
+    university,
+    listingType,
+    minRating,
+    priceRange,
+    listings,
+    getCatalog,
+  ]);
 
   const universities = ["UDSM", "DIT", "SUA", "ARU"];
 
@@ -55,11 +71,40 @@ export default function MarketplacePage() {
         <div className="mb-8 border-b border-border pb-8">
           <p className="font-mono text-xs text-muted-foreground">Marketplace</p>
           <h1 className="font-display mt-2 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-            Browse campus products
+            Campus projects & commercial products
           </h1>
           <p className="mt-2 max-w-xl text-[15px] text-muted">
-            Ready-made student projects, source, and docs — filter by craft, stack, or campus.
+            Browse student campus listings or Market products built for companies
+            and developers — different badges, prices, and rules.
           </p>
+        </div>
+
+        <div className="mb-6 grid grid-cols-3 gap-2 rounded-2xl border border-border bg-card/60 p-1.5 sm:max-w-md">
+          {(
+            [
+              { id: "all" as const, label: "All" },
+              { id: "CAMPUS" as const, label: "Campus" },
+              { id: "MARKET" as const, label: "Market" },
+            ] as const
+          ).map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setListingType(tab.id)}
+              className={cn(
+                "rounded-xl px-3 py-2 text-sm font-medium transition",
+                listingType === tab.id
+                  ? tab.id === "MARKET"
+                    ? "bg-amber-500/20 text-amber-800 dark:text-amber-200"
+                    : tab.id === "CAMPUS"
+                      ? "bg-cyan-500/20 text-cyan-900 dark:text-cyan-100"
+                      : "bg-primary/15 text-foreground"
+                  : "text-muted hover:text-foreground"
+              )}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
 
         <div className="mb-6 flex flex-col gap-3 sm:flex-row">
@@ -78,13 +123,22 @@ export default function MarketplacePage() {
           </Button>
         </div>
 
+        <div className="mb-6 flex flex-wrap items-center gap-2">
+          <ListingTypeBadge listingType="CAMPUS" />
+          <span className="text-xs text-muted-foreground">student / academic</span>
+          <ListingTypeBadge listingType="MARKET" />
+          <span className="text-xs text-muted-foreground">
+            commercial / companies
+          </span>
+        </div>
+
         <div className="mb-6 flex flex-wrap gap-2">
           <Badge
             variant={!category ? "default" : "outline"}
             className="cursor-pointer"
             onClick={() => setCategory("")}
           >
-            All
+            All categories
           </Badge>
           {CATEGORIES.map((c) => (
             <Badge

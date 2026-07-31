@@ -200,6 +200,8 @@ export async function fulfillPurchase(
     projectId: project.id,
     buyerId: buyer.id,
     buyerUniversity: buyer.university,
+    listingType: (project as { listingType?: string }).listingType,
+    license: project.license,
   });
   if (!lock.allowed) {
     throw new PurchaseBlockedError(lock.message, lock.code, {

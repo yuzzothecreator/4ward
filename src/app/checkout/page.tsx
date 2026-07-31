@@ -13,6 +13,7 @@ import { useAppStore } from "@/store/use-app-store";
 import { RequireAuth } from "@/components/auth/require-auth";
 import Link from "next/link";
 import { institutionShort } from "@/lib/tanzania-institutions";
+import { isCommercialListing } from "@/lib/constants";
 
 type PayMethod = "clickpesa" | "demo";
 
@@ -36,6 +37,7 @@ function CheckoutInner() {
     () => getProjectBySlug(slug),
     [slug, listings, getProjectBySlug]
   );
+  const commercial = project ? isCommercialListing(project) : false;
 
   const [methods, setMethods] = useState<MethodsResponse["methods"] | null>(null);
   const [method, setMethod] = useState<PayMethod>("clickpesa");
@@ -165,7 +167,8 @@ function CheckoutInner() {
 
   const alreadyOwned = hasPurchased(project.id);
   const clickpesaReady = Boolean(methods?.clickpesa?.enabled);
-  const campusBlocked = Boolean(campusLock && !campusLock.allowed);
+  const campusBlocked =
+    !commercial && Boolean(campusLock && !campusLock.allowed);
 
   async function payWithClickPesa() {
     setError("");
@@ -281,7 +284,12 @@ function CheckoutInner() {
             </span>
           </div>
 
-          {campusBlocked && campusLock?.message ? (
+          {commercial ? (
+            <p className="text-xs text-amber-800 dark:text-amber-200/90">
+              Market listing — open to any buyer. Commercial license terms apply;
+              no campus exclusivity lock.
+            </p>
+          ) : campusBlocked && campusLock?.message ? (
             <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-100">
               <p>{campusLock.message}</p>
               {campusLock.code === "UNIVERSITY_REQUIRED" ? (

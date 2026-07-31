@@ -257,6 +257,7 @@ export const useAppStore = create<AppState>()(
           category: values.category,
           price,
           pricingType,
+          listingType: values.listingType || "CAMPUS",
           license: values.license,
           status,
           coverImage: opts?.coverImage || DEFAULT_COVER,
@@ -392,6 +393,7 @@ export function filterCatalog(
     q?: string;
     tech?: string;
     university?: string;
+    listingType?: string;
     minPrice?: number;
     maxPrice?: number;
     minRating?: number;
@@ -399,6 +401,7 @@ export function filterCatalog(
 ) {
   return catalog.filter((p) => {
     if (filters.category && p.category !== filters.category) return false;
+    if (filters.listingType && p.listingType !== filters.listingType) return false;
     if (filters.q) {
       const q = filters.q.toLowerCase();
       const hay = `${p.title} ${p.description} ${p.technologyStack.join(" ")}`.toLowerCase();

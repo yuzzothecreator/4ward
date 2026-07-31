@@ -95,6 +95,7 @@ export async function POST(req: Request) {
       category: parsed.data.category,
       price: parsed.data.pricingType === "FREE" ? 0 : parsed.data.price,
       pricingType: parsed.data.pricingType === "FREE" ? "FREE" : "PAID",
+      listingType: parsed.data.listingType === "MARKET" ? "MARKET" : "CAMPUS",
       license: parsed.data.license,
       technologyStack: parsed.data.technologyStack,
       demoUrl: parsed.data.demoUrl || null,

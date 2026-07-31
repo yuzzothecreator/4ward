@@ -1,5 +1,6 @@
 import { getPrisma, pingDatabase } from "@/lib/prisma";
 import { canonicalizeInstitution } from "@/lib/tanzania-institutions";
+import { isCommercialListing } from "@/lib/constants";
 
 /** Campus presentation exclusivity window */
 export const UNIVERSITY_EXCLUSIVITY_MONTHS = 4;
@@ -45,7 +46,19 @@ export async function checkUniversityExclusivity(input: {
   projectId: string;
   buyerId: string;
   buyerUniversity: string | null | undefined;
+  listingType?: string | null;
+  license?: string | null;
 }): Promise<UniversityLockResult> {
+  // Market / commercial products are open to any buyer — no campus lock
+  if (
+    isCommercialListing({
+      listingType: input.listingType,
+      license: input.license,
+    })
+  ) {
+    return { allowed: true, reason: "no_prior" };
+  }
+
   const uni = normalizeUniversity(input.buyerUniversity);
   if (!uni) {
     return {
@@ -126,6 +139,32 @@ export async function checkUniversityExclusivityForEmail(input: {
   }
 
   const prisma = await getPrisma();
+
+  const project = await prisma.project.findFirst({
+    where: {
+      OR: [
+        input.projectId ? { id: input.projectId } : undefined,
+        input.slug ? { slug: input.slug } : undefined,
+      ].filter(Boolean) as { id?: string; slug?: string }[],
+    },
+    select: { id: true, listingType: true, license: true },
+  });
+
+  // Catalog/demo listings may not exist in DB yet — allow until fulfill creates them
+  if (!project) {
+    return { allowed: true, reason: "no_prior", projectId: undefined };
+  }
+
+  // Market / commercial — skip campus university requirement entirely
+  if (
+    isCommercialListing({
+      listingType: project.listingType,
+      license: project.license,
+    })
+  ) {
+    return { allowed: true, reason: "no_prior", projectId: project.id };
+  }
+
   let buyer = await prisma.user.findUnique({ where: { email } });
 
   const incomingUni = input.university?.trim();
@@ -173,25 +212,12 @@ export async function checkUniversityExclusivityForEmail(input: {
     };
   }
 
-  const project = await prisma.project.findFirst({
-    where: {
-      OR: [
-        input.projectId ? { id: input.projectId } : undefined,
-        input.slug ? { slug: input.slug } : undefined,
-      ].filter(Boolean) as { id?: string; slug?: string }[],
-    },
-    select: { id: true },
-  });
-
-  // Catalog/demo listings may not exist in DB yet — allow until fulfill creates them
-  if (!project) {
-    return { allowed: true, reason: "no_prior", projectId: undefined };
-  }
-
   const result = await checkUniversityExclusivity({
     projectId: project.id,
     buyerId: buyer.id,
     buyerUniversity: buyer.university,
+    listingType: project.listingType,
+    license: project.license,
   });
 
   return { ...result, projectId: project.id };

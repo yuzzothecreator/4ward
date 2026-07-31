@@ -12,7 +12,9 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { projectSchema, type ProjectFormValues } from "@/lib/validations";
-import { CATEGORIES, TECHNOLOGIES, LICENSE_TYPES } from "@/lib/constants";
+import { CATEGORIES, TECHNOLOGIES, LICENSE_TYPES, LISTING_TYPES } from "@/lib/constants";
+import { LicenseBadge, ListingTypeBadge } from "@/components/projects/listing-badges";
+import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/use-app-store";
 import { RequireAuth } from "@/components/auth/require-auth";
 import type { DemoProject } from "@/lib/demo-data";
@@ -39,7 +41,8 @@ function SellForm() {
     resolver: zodResolver(projectSchema) as any,
     defaultValues: {
       pricingType: "PAID",
-      license: "SOURCE_CODE",
+      listingType: "CAMPUS",
+      license: "EDUCATIONAL",
       price: 75000,
       technologyStack: [],
       category: "WEB_APPLICATIONS",
@@ -47,6 +50,8 @@ function SellForm() {
   });
 
   const pricingType = watch("pricingType");
+  const listingType = watch("listingType");
+  const license = watch("license");
   const title = watch("title");
 
   function toggleTech(tech: string) {
@@ -330,7 +335,60 @@ function SellForm() {
 
           <Card>
             <CardHeader>
+              <CardTitle>Who is this for?</CardTitle>
+              <CardDescription>
+                Campus = student presentation pricing. Market = real commercial
+                product for companies and developers.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid gap-3 sm:grid-cols-2">
+                {LISTING_TYPES.map((lt) => (
+                  <button
+                    key={lt.value}
+                    type="button"
+                    onClick={() => {
+                      setValue("listingType", lt.value, { shouldValidate: true });
+                      setValue("license", lt.defaultLicense, {
+                        shouldValidate: true,
+                      });
+                      if (pricingType === "PAID") {
+                        setValue("price", lt.suggestedPrice, {
+                          shouldValidate: true,
+                        });
+                      }
+                    }}
+                    className={cn(
+                      "rounded-xl border p-4 text-left transition",
+                      listingType === lt.value
+                        ? lt.value === "MARKET"
+                          ? "border-amber-500/60 bg-amber-500/10"
+                          : "border-cyan-500/50 bg-cyan-500/10"
+                        : "border-border hover:bg-foreground/5"
+                    )}
+                  >
+                    <div className="mb-2">
+                      <ListingTypeBadge listingType={lt.value} />
+                    </div>
+                    <p className="text-sm font-medium text-foreground">
+                      {lt.label}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {lt.description}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
               <CardTitle>Pricing & license</CardTitle>
+              <CardDescription>
+                License badges tell buyers what they can legally do after
+                purchase.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex gap-3">
@@ -341,6 +399,9 @@ function SellForm() {
                     onClick={() => {
                       setValue("pricingType", type);
                       if (type === "FREE") setValue("price", 0);
+                      else if (listingType === "MARKET")
+                        setValue("price", 1500000);
+                      else setValue("price", 75000);
                     }}
                     className={`flex-1 rounded-xl border p-3 text-sm font-medium transition ${
                       pricingType === type
@@ -354,22 +415,63 @@ function SellForm() {
               </div>
               {pricingType === "PAID" && (
                 <div>
-                  <Label>Price (TZS)</Label>
-                  <Input type="number" step="1" min="1" className="mt-1.5" {...register("price")} />
+                  <Label>
+                    Price (TZS)
+                    {listingType === "MARKET"
+                      ? " — commercial / company band"
+                      : " — campus / student band"}
+                  </Label>
+                  <Input
+                    type="number"
+                    step="1"
+                    min="1"
+                    className="mt-1.5"
+                    {...register("price")}
+                  />
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {listingType === "MARKET"
+                      ? "Suggested Market range: TZS 500k – 5M+"
+                      : "Suggested Campus range: TZS 50k – 250k"}
+                  </p>
                 </div>
               )}
               <div>
                 <Label>License</Label>
                 <div className="mt-2 space-y-2">
-                  {LICENSE_TYPES.map((lic) => (
+                  {LICENSE_TYPES.filter((lic) =>
+                    listingType === "MARKET"
+                      ? lic.value === "COMMERCIAL" || lic.value === "SOURCE_CODE"
+                      : lic.value === "EDUCATIONAL" ||
+                        lic.value === "SOURCE_CODE"
+                  ).map((lic) => (
                     <label
                       key={lic.value}
-                      className="flex cursor-pointer gap-3 rounded-xl border border-border p-3 hover:bg-foreground/5"
+                      className={cn(
+                        "flex cursor-pointer gap-3 rounded-xl border p-3 transition",
+                        license === lic.value
+                          ? lic.cardClass
+                          : "border-border hover:bg-foreground/5"
+                      )}
                     >
-                      <input type="radio" value={lic.value} {...register("license")} className="mt-1" />
-                      <div>
-                        <p className="text-sm font-medium text-foreground">{lic.label}</p>
-                        <p className="text-xs text-muted-foreground">{lic.description}</p>
+                      <input
+                        type="radio"
+                        value={lic.value}
+                        {...register("license")}
+                        className="mt-1"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="mb-1.5 flex flex-wrap items-center gap-2">
+                          <LicenseBadge license={lic.value} />
+                          <span className="text-[11px] text-muted-foreground">
+                            {lic.audience}
+                          </span>
+                        </div>
+                        <p className="text-sm font-medium text-foreground">
+                          {lic.label}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {lic.description}
+                        </p>
                       </div>
                     </label>
                   ))}

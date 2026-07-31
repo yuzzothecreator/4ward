@@ -58,6 +58,7 @@ export function VerificationStatusSync() {
               category: string;
               price: number;
               pricingType: "FREE" | "PAID";
+              listingType?: "CAMPUS" | "MARKET";
               license: string;
               status: string;
               coverImage: string;
@@ -88,6 +89,12 @@ export function VerificationStatusSync() {
               category: p.category,
               price: p.price,
               pricingType: p.pricingType,
+              listingType:
+                p.listingType === "MARKET"
+                  ? "MARKET"
+                  : p.license === "COMMERCIAL"
+                    ? "MARKET"
+                    : "CAMPUS",
               license: p.license,
               status: p.status,
               coverImage: p.coverImage,

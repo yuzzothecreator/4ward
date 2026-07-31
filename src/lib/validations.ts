@@ -17,6 +17,7 @@ export const projectSchema = z.object({
   ]),
   price: z.coerce.number().min(0),
   pricingType: z.enum(["FREE", "PAID"]),
+  listingType: z.enum(["CAMPUS", "MARKET"]),
   license: z.enum(["SOURCE_CODE", "COMMERCIAL", "EDUCATIONAL"]),
   technologyStack: z.array(z.string()).min(1, "Select at least one technology"),
   demoUrl: z.string().url().optional().or(z.literal("")),

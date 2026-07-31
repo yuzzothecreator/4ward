@@ -7,6 +7,8 @@ export type DemoProject = {
   category: string;
   price: number;
   pricingType: "FREE" | "PAID";
+  /** Campus = student/academic; Market = commercial product for anyone */
+  listingType: "CAMPUS" | "MARKET";
   license: string;
   status: string;
   coverImage: string;
@@ -41,6 +43,7 @@ export const demoProjects: DemoProject[] = [
     category: "WEB_APPLICATIONS",
     price: 125000,
     pricingType: "PAID",
+    listingType: "CAMPUS",
     license: "SOURCE_CODE",
     status: "PUBLISHED",
     coverImage:
@@ -74,8 +77,9 @@ export const demoProjects: DemoProject[] = [
       "Enterprise-grade password manager backend with AES-256 encryption, zero-knowledge architecture, biometric auth hooks, and audit logging. Includes REST + GraphQL APIs and comprehensive documentation.",
     shortDescription: "Zero-knowledge encrypted password manager with GraphQL API.",
     category: "CYBERSECURITY",
-    price: 195000,
+    price: 1950000,
     pricingType: "PAID",
+    listingType: "MARKET",
     license: "COMMERCIAL",
     status: "PUBLISHED",
     coverImage:
@@ -109,6 +113,7 @@ export const demoProjects: DemoProject[] = [
     category: "IOT",
     price: 150000,
     pricingType: "PAID",
+    listingType: "CAMPUS",
     license: "EDUCATIONAL",
     status: "PUBLISHED",
     coverImage:
@@ -142,6 +147,7 @@ export const demoProjects: DemoProject[] = [
     category: "ARTIFICIAL_INTELLIGENCE",
     price: 95000,
     pricingType: "PAID",
+    listingType: "CAMPUS",
     license: "SOURCE_CODE",
     status: "PUBLISHED",
     coverImage:
@@ -173,8 +179,9 @@ export const demoProjects: DemoProject[] = [
       "Premium Figma + React Native UI kit for fintech wallets — built for M-Pesa and mobile money flows common in Tanzania. 80+ screens, dark/light themes, and design tokens.",
     shortDescription: "80+ screen fintech wallet UI kit for React Native.",
     category: "UI_UX_DESIGNS",
-    price: 75000,
+    price: 850000,
     pricingType: "PAID",
+    listingType: "MARKET",
     license: "COMMERCIAL",
     status: "PUBLISHED",
     coverImage:
@@ -208,6 +215,7 @@ export const demoProjects: DemoProject[] = [
     category: "BLOCKCHAIN",
     price: 0,
     pricingType: "FREE",
+    listingType: "CAMPUS",
     license: "EDUCATIONAL",
     status: "PUBLISHED",
     coverImage:
@@ -242,6 +250,7 @@ export const demoProjects: DemoProject[] = [
     category: "DATA_SCIENCE",
     price: 110000,
     pricingType: "PAID",
+    listingType: "CAMPUS",
     license: "SOURCE_CODE",
     status: "PUBLISHED",
     coverImage:
@@ -273,8 +282,9 @@ export const demoProjects: DemoProject[] = [
       "Hospital appointment booking system with queue management, SMS reminders, doctor schedules, and patient records. Laravel + MySQL with responsive Blade UI.",
     shortDescription: "Hospital booking & queue system with SMS reminders.",
     category: "WEB_APPLICATIONS",
-    price: 135000,
+    price: 1200000,
     pricingType: "PAID",
+    listingType: "MARKET",
     license: "COMMERCIAL",
     status: "PUBLISHED",
     coverImage:

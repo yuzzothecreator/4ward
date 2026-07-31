@@ -8,6 +8,7 @@ import { useAppStore } from "@/store/use-app-store";
 import type { DemoProject } from "@/lib/demo-data";
 import Link from "next/link";
 import { institutionShort } from "@/lib/tanzania-institutions";
+import { isCommercialListing } from "@/lib/constants";
 
 type Availability = {
   allowed: boolean;
@@ -26,12 +27,13 @@ export function PurchaseButton({ project }: { project: DemoProject }) {
   const addToCart = useAppStore((s) => s.addToCart);
   const hasPurchased = useAppStore((s) => s.hasPurchased);
   const owned = hasPurchased(project.id);
+  const commercial = isCommercialListing(project);
   const isOwner =
     !!user &&
     (project.seller.username === user.username || project.seller.id === user.email);
 
   useEffect(() => {
-    if (!user?.email || owned || isOwner) {
+    if (commercial || !user?.email || owned || isOwner) {
       setAvailability(null);
       return;
     }
@@ -49,7 +51,7 @@ export function PurchaseButton({ project }: { project: DemoProject }) {
     return () => {
       cancelled = true;
     };
-  }, [user?.email, project.id, project.slug, owned, isOwner]);
+  }, [user?.email, project.id, project.slug, owned, isOwner, commercial]);
 
   async function handlePurchase() {
     if (!user && !process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) {
@@ -58,7 +60,7 @@ export function PurchaseButton({ project }: { project: DemoProject }) {
     }
 
     if (isOwner) return;
-    if (availability && !availability.allowed) return;
+    if (!commercial && availability && !availability.allowed) return;
 
     setLoading(true);
     addToCart({
@@ -91,7 +93,7 @@ export function PurchaseButton({ project }: { project: DemoProject }) {
     );
   }
 
-  const locked = availability && !availability.allowed;
+  const locked = !commercial && availability && !availability.allowed;
 
   return (
     <div className="w-full space-y-2">
@@ -112,7 +114,9 @@ export function PurchaseButton({ project }: { project: DemoProject }) {
             ? "Campus reserved"
             : project.price === 0
               ? "Get free"
-              : "Buy now"}
+              : commercial
+                ? "Buy commercial"
+                : "Buy now"}
         </Button>
         <Button
           variant="secondary"
@@ -137,6 +141,10 @@ export function PurchaseButton({ project }: { project: DemoProject }) {
               </Link>
             </>
           ) : null}
+        </p>
+      ) : commercial ? (
+        <p className="text-[11px] text-amber-800 dark:text-amber-200/80">
+          Market product — open to any buyer under a commercial license.
         </p>
       ) : user?.university ? (
         <p className="text-[11px] text-muted-foreground">

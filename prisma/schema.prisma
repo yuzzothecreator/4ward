@@ -42,6 +42,11 @@ enum LicenseType {
   EDUCATIONAL
 }
 
+enum ListingType {
+  CAMPUS
+  MARKET
+}
+
 enum PricingType {
   FREE
   PAID
@@ -142,6 +147,7 @@ model Project {
   category         ProjectCategory
   price            Float           @default(0)
   pricingType      PricingType     @default(PAID)
+  listingType      ListingType     @default(CAMPUS)
   license          LicenseType     @default(SOURCE_CODE)
   status           ProjectStatus   @default(DRAFT)
   images           String[]        @default([])

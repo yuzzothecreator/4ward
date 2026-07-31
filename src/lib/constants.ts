@@ -37,19 +37,84 @@ export const LICENSE_TYPES = [
   {
     value: "SOURCE_CODE",
     label: "Source Code Access",
-    description: "Full access to source code for personal use",
+    shortLabel: "Source code",
+    description:
+      "Buyer gets the code for personal use and learning — not for selling as a product.",
+    audience: "Campus · personal",
+    badgeClass:
+      "border-sky-500/40 bg-sky-500/15 text-sky-700 dark:text-sky-300",
+    cardClass: "border-sky-500/40 bg-sky-500/5",
   },
   {
     value: "COMMERCIAL",
     label: "Commercial License",
-    description: "Use in commercial products and resale rights",
+    shortLabel: "Commercial",
+    description:
+      "Buyer may use this in real products, business, or resale — priced for companies & pros.",
+    audience: "Market · companies",
+    badgeClass:
+      "border-amber-500/50 bg-amber-500/15 text-amber-800 dark:text-amber-300",
+    cardClass: "border-amber-500/45 bg-amber-500/5",
   },
   {
     value: "EDUCATIONAL",
     label: "Educational License",
-    description: "For learning and academic purposes only",
+    shortLabel: "Educational",
+    description:
+      "For school, coursework, and presentations only — no commercial or company use.",
+    audience: "Campus · academic",
+    badgeClass:
+      "border-cyan-500/40 bg-cyan-500/15 text-cyan-800 dark:text-cyan-300",
+    cardClass: "border-cyan-500/40 bg-cyan-500/5",
   },
 ] as const;
+
+export type LicenseMeta = (typeof LICENSE_TYPES)[number];
+
+export const LISTING_TYPES = [
+  {
+    value: "CAMPUS",
+    label: "Campus",
+    description:
+      "Student / academic project — presentation pricing and same-university exclusivity.",
+    badgeClass:
+      "border-cyan-500/40 bg-cyan-500/15 text-cyan-800 dark:text-cyan-300",
+    defaultLicense: "EDUCATIONAL" as const,
+    suggestedPrice: 75000,
+  },
+  {
+    value: "MARKET",
+    label: "Market",
+    description:
+      "Real commercial product or system — open to any buyer, company-ready pricing.",
+    badgeClass:
+      "border-amber-500/50 bg-amber-500/15 text-amber-800 dark:text-amber-300",
+    defaultLicense: "COMMERCIAL" as const,
+    suggestedPrice: 1500000,
+  },
+] as const;
+
+export type ListingTypeMeta = (typeof LISTING_TYPES)[number];
+
+export function getLicenseMeta(license: string): LicenseMeta {
+  return (
+    LICENSE_TYPES.find((l) => l.value === license) || LICENSE_TYPES[0]
+  );
+}
+
+export function getListingTypeMeta(type: string): ListingTypeMeta {
+  return LISTING_TYPES.find((l) => l.value === type) || LISTING_TYPES[0];
+}
+
+/** Commercial / market listings look and behave differently from campus. */
+export function isCommercialListing(input: {
+  listingType?: string | null;
+  license?: string | null;
+}): boolean {
+  if (input.listingType === "MARKET") return true;
+  if (input.listingType === "CAMPUS") return false;
+  return input.license === "COMMERCIAL";
+}
 
 export const PLATFORM_FEE_PERCENT = 15;
 export const AFFILIATE_COMMISSION_PERCENT = 10;

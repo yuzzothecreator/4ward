@@ -4,17 +4,23 @@ import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Star, ExternalLink, Code2, Download, GraduationCap, Shield, MessageSquare } from "lucide-react";
+import { Star, ExternalLink, Code2, Download, GraduationCap, Shield, MessageSquare, Briefcase } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatPrice, categoryLabel, formatNumber } from "@/lib/utils";
 import { institutionShort } from "@/lib/tanzania-institutions";
+import { isCommercialListing, getLicenseMeta } from "@/lib/constants";
+import {
+  LicenseBadge,
+  ListingTypeBadge,
+} from "@/components/projects/listing-badges";
 import { ProjectCard } from "@/components/projects/project-card";
 import { PurchaseButton } from "@/components/projects/purchase-button";
 import { ProjectReviews } from "@/components/projects/project-reviews";
 import { VerifiedTick } from "@/components/verified-tick";
 import { useAppStore } from "@/store/use-app-store";
+import { cn } from "@/lib/utils";
 
 export default function ProjectDetailPage() {
   const params = useParams<{ slug: string }>();
@@ -45,6 +51,8 @@ export default function ProjectDetailPage() {
 
   const displayRating = reviewStats && reviewStats.count > 0 ? reviewStats.average : 0;
   const displayReviewCount = reviewStats ? reviewStats.count : 0;
+  const commercial = project ? isCommercialListing(project) : false;
+  const licenseMeta = project ? getLicenseMeta(project.license) : null;
 
   if (!project) {
     return (
@@ -61,9 +69,34 @@ export default function ProjectDetailPage() {
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10">
+        {commercial ? (
+          <div className="mb-6 flex flex-wrap items-center gap-2 rounded-2xl border border-amber-500/35 bg-amber-500/10 px-4 py-3 text-sm text-amber-950 dark:text-amber-100">
+            <Briefcase className="h-4 w-4 shrink-0" />
+            <span className="font-medium">Market listing</span>
+            <span className="text-amber-900/80 dark:text-amber-100/80">
+              — real commercial product. Open to companies and developers; no
+              campus exclusivity lock.
+            </span>
+          </div>
+        ) : (
+          <div className="mb-6 flex flex-wrap items-center gap-2 rounded-2xl border border-cyan-500/30 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-950 dark:text-cyan-100">
+            <GraduationCap className="h-4 w-4 shrink-0" />
+            <span className="font-medium">Campus listing</span>
+            <span className="text-cyan-900/80 dark:text-cyan-100/80">
+              — student / academic use with same-university presentation
+              exclusivity.
+            </span>
+          </div>
+        )}
+
         <div className="grid gap-6 lg:grid-cols-3 lg:gap-10">
           <div className="min-w-0 space-y-6 lg:col-span-2">
-            <div className="relative aspect-video overflow-hidden rounded-2xl border border-border">
+            <div
+              className={cn(
+                "relative aspect-video overflow-hidden rounded-2xl border",
+                commercial ? "border-amber-500/40" : "border-border"
+              )}
+            >
               <Image
                 src={project.coverImage}
                 alt={project.title}
@@ -76,22 +109,53 @@ export default function ProjectDetailPage() {
 
             <div>
               <div className="mb-3 flex flex-wrap gap-2">
-                <Badge variant="neon">{categoryLabel(project.category)}</Badge>
-                <Badge variant="secondary">{project.license.replace("_", " ")}</Badge>
-                {project.pricingType === "FREE" && <Badge variant="success">Free</Badge>}
+                <ListingTypeBadge
+                  listingType={project.listingType}
+                  license={project.license}
+                />
+                <LicenseBadge license={project.license} />
+                <Badge variant="secondary">{categoryLabel(project.category)}</Badge>
+                {project.pricingType === "FREE" && (
+                  <Badge variant="success">Free</Badge>
+                )}
               </div>
               <h1 className="text-2xl font-bold break-words text-foreground sm:text-3xl lg:text-4xl">
                 {project.title}
               </h1>
               <p className="mt-3 break-words text-muted">{project.description}</p>
+              {licenseMeta ? (
+                <p className="mt-3 text-sm text-muted-foreground">
+                  <span className="font-medium text-foreground">
+                    {licenseMeta.label}:
+                  </span>{" "}
+                  {licenseMeta.description}
+                </p>
+              ) : null}
             </div>
           </div>
 
           <div className="min-w-0 space-y-4 lg:row-span-2 lg:self-start">
-            <Card className="lg:sticky lg:top-24">
+            <Card
+              className={cn(
+                "lg:sticky lg:top-24",
+                commercial && "border-amber-500/40"
+              )}
+            >
               <CardContent className="space-y-5 p-5 sm:p-6">
-                <div className="text-3xl font-bold text-foreground">
-                  {formatPrice(project.price)}
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    {commercial ? "Commercial price" : "Campus price"}
+                  </p>
+                  <div
+                    className={cn(
+                      "text-3xl font-bold",
+                      commercial
+                        ? "text-amber-700 dark:text-amber-300"
+                        : "text-foreground"
+                    )}
+                  >
+                    {formatPrice(project.price)}
+                  </div>
                 </div>
                 <PurchaseButton project={project} />
                 <div className="flex flex-col gap-2">
@@ -117,10 +181,10 @@ export default function ProjectDetailPage() {
                     <Download className="h-4 w-4 shrink-0 text-primary" />
                     Instant secure download
                   </p>
-                  <p className="flex items-center gap-2">
-                    <Shield className="h-4 w-4 shrink-0 text-primary" />
+                  <p className="flex items-start gap-2">
+                    <Shield className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                     <span className="min-w-0 break-words">
-                      License: {project.license.replace("_", " ")}
+                      {licenseMeta?.label}: {licenseMeta?.description}
                     </span>
                   </p>
                 </div>
