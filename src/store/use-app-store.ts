@@ -19,6 +19,12 @@ export type DemoUser = {
   createdAt: string;
   /** Blue-tick from VERIFIED_CREATOR badge — kept in sync across UI */
   verified?: boolean;
+  bio?: string;
+  supportNote?: string;
+  whatsapp?: string;
+  website?: string;
+  githubUrl?: string;
+  skills?: string[];
 };
 
 export type PurchaseRecord = {
@@ -272,6 +278,8 @@ export const useAppStore = create<AppState>()(
           demoUrl: values.demoUrl || "",
           githubRepo: values.githubRepo || undefined,
           sourceFile: opts?.sourceFile,
+          setupGuide: values.setupGuide,
+          documentationUrl: values.documentationUrl || undefined,
           technologyStack: values.technologyStack,
           views: 0,
           downloads: 0,

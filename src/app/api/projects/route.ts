@@ -100,6 +100,8 @@ export async function POST(req: Request) {
       pricingType: parsed.data.pricingType === "FREE" ? "FREE" : "PAID",
       listingType: parsed.data.listingType === "MARKET" ? "MARKET" : "CAMPUS",
       license: parsed.data.license,
+      setupGuide: parsed.data.setupGuide,
+      documentation: parsed.data.documentationUrl || null,
       technologyStack: parsed.data.technologyStack,
       demoUrl: parsed.data.demoUrl || null,
       githubRepo: parsed.data.githubRepo || null,
@@ -158,17 +160,47 @@ export async function POST(req: Request) {
         university: body.university || "University of Dar es Salaam",
         isApproved: true,
       },
-      include: { badges: { select: { badge: true } } },
+      include: {
+        badges: { select: { badge: true } },
+      },
     });
 
+    // Refresh seller with profile fields for publish gate
+    const sellerProfile = await prisma.user.findUnique({
+      where: { id: seller.id },
+      include: { badges: { select: { badge: true } } },
+    });
+    const sellerGate = sellerProfile || seller;
+
     if (wantsMarket) {
-      const verified = seller.badges.some((b) => b.badge === "VERIFIED_CREATOR");
+      const verified = sellerGate.badges.some(
+        (b) => b.badge === "VERIFIED_CREATOR"
+      );
       if (!verified) {
         return NextResponse.json(
           {
             error:
               "Only verified sellers can list Market / commercial products. Request verification first.",
             code: "VERIFICATION_REQUIRED",
+          },
+          { status: 403 }
+        );
+      }
+    }
+
+    if (status === "PUBLISHED") {
+      const { isSellerProfileReady } = await import("@/lib/seller-profile");
+      if (
+        !isSellerProfileReady({
+          bio: sellerGate.bio,
+          supportNote: sellerGate.supportNote,
+        })
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "Complete your seller profile (bio + buyer support note) before publishing.",
+            code: "SELLER_PROFILE_INCOMPLETE",
           },
           { status: 403 }
         );

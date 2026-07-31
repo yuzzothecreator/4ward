@@ -132,6 +132,33 @@ export default function ProjectDetailPage() {
                 </p>
               ) : null}
             </div>
+
+            {project.setupGuide ? (
+              <Card>
+                <CardContent className="space-y-3 p-5 sm:p-6">
+                  <h2 className="text-lg font-semibold text-foreground">
+                    How to use / setup
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    Read this before you buy so you know what happens after
+                    purchase. Full steps stay available in your purchases too.
+                  </p>
+                  <pre className="whitespace-pre-wrap rounded-xl border border-border bg-foreground/[0.03] p-4 text-sm leading-relaxed text-foreground">
+                    {project.setupGuide}
+                  </pre>
+                  {project.documentationUrl ? (
+                    <a
+                      href={project.documentationUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex text-sm text-primary underline"
+                    >
+                      Open documentation
+                    </a>
+                  ) : null}
+                </CardContent>
+              </Card>
+            ) : null}
           </div>
 
           <div className="min-w-0 space-y-4 lg:row-span-2 lg:self-start">

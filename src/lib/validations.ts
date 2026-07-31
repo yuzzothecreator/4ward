@@ -22,6 +22,14 @@ export const projectSchema = z.object({
   technologyStack: z.array(z.string()).min(1, "Select at least one technology"),
   demoUrl: z.string().url().optional().or(z.literal("")),
   githubRepo: z.string().url().optional().or(z.literal("")),
+  setupGuide: z
+    .string()
+    .min(
+      40,
+      "Add setup / how-to-use steps (at least 40 characters) so buyers know what to do"
+    )
+    .max(8000),
+  documentationUrl: z.string().url().optional().or(z.literal("")),
 });
 
 export const reviewSchema = z.object({
@@ -37,11 +45,22 @@ export const profileSchema = z.object({
     .min(3)
     .max(30)
     .regex(/^[a-z0-9_-]+$/, "Only lowercase letters, numbers, _ and -"),
-  bio: z.string().max(500).optional(),
+  bio: z
+    .string()
+    .min(20, "Tell buyers who you are (at least 20 characters)")
+    .max(500),
   university: z.string().max(120).optional(),
   skills: z.array(z.string()).max(20),
   website: z.string().url().optional().or(z.literal("")),
   githubUrl: z.string().url().optional().or(z.literal("")),
+  supportNote: z
+    .string()
+    .min(
+      20,
+      "Explain how buyers can get help after purchase (at least 20 characters)"
+    )
+    .max(1000),
+  whatsapp: z.string().max(40).optional().or(z.literal("")),
 });
 
 export const messageSchema = z.object({

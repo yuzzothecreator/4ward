@@ -111,6 +111,10 @@ model User {
   skills        String[] @default([])
   website       String?
   githubUrl     String?
+  /** How the seller helps buyers after purchase (setup help, WhatsApp, hours). */
+  supportNote   String?
+  /** Optional WhatsApp / phone for buyer support */
+  whatsapp      String?
   stripeAccount String?
   isApproved    Boolean  @default(false)
   affiliateCode String   @unique @default(cuid())
@@ -156,6 +160,8 @@ model Project {
   demoVideo        String?
   sourceFile       String?
   documentation    String?
+  /** Step-by-step how buyers install / use the product after purchase */
+  setupGuide       String?
   githubRepo       String?
   technologyStack  String[]        @default([])
   views            Int             @default(0)

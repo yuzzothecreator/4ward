@@ -17,6 +17,7 @@ import { LicenseBadge, ListingTypeBadge } from "@/components/projects/listing-ba
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/use-app-store";
 import { RequireAuth } from "@/components/auth/require-auth";
+import { isSellerProfileReady } from "@/lib/seller-profile";
 import type { DemoProject } from "@/lib/demo-data";
 
 function SellForm() {
@@ -48,6 +49,8 @@ function SellForm() {
       price: 75000,
       technologyStack: [],
       category: "WEB_APPLICATIONS",
+      setupGuide: "",
+      documentationUrl: "",
     },
   });
 
@@ -123,6 +126,13 @@ function SellForm() {
   }
 
   async function onSubmit(values: ProjectFormValues, asDraft: boolean) {
+    if (!asDraft && !isSellerProfileReady(user || {})) {
+      setPublishError(
+        "Complete your seller profile (bio + buyer support note) before publishing, so buyers know how to get help."
+      );
+      return;
+    }
+
     const wantsMarket =
       values.listingType === "MARKET" || values.license === "COMMERCIAL";
     if (wantsMarket && !user?.verified) {
@@ -229,6 +239,23 @@ function SellForm() {
           license, publish, and get paid in TZS.
         </p>
 
+        {!isSellerProfileReady(user || {}) ? (
+          <div className="mt-4 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-950 dark:text-amber-100">
+            <p className="font-medium">Seller profile incomplete</p>
+            <p className="mt-1 text-xs opacity-90">
+              Add your bio and post-purchase support note before publishing —
+              buyers need to know how to get help if they don’t understand the
+              product.
+            </p>
+            <Link
+              href="/dashboard/profile"
+              className="mt-2 inline-block text-xs font-semibold underline"
+            >
+              Complete profile
+            </Link>
+          </div>
+        ) : null}
+
         <form className="mt-8 space-y-6">
           <Card>
             <CardHeader>
@@ -280,7 +307,52 @@ function SellForm() {
                 <Label htmlFor="shortDescription">Short description</Label>
                 <Input id="shortDescription" className="mt-1.5" {...register("shortDescription")} />
               </div>
+            </CardContent>
+          </Card>
 
+          <Card>
+            <CardHeader>
+              <CardTitle>How buyers use it</CardTitle>
+              <CardDescription>
+                Required. Buyers see this before and after purchase so they are
+                not stuck without setup help.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label htmlFor="setupGuide">Setup / how-to-use guide</Label>
+                <Textarea
+                  id="setupGuide"
+                  className="mt-1.5"
+                  rows={6}
+                  placeholder={
+                    "1) Download the ZIP after purchase\n2) Copy .env.example → .env\n3) npm install && npm run dev\n4) Message me on 4ward if you get stuck"
+                  }
+                  {...register("setupGuide")}
+                />
+                {errors.setupGuide && (
+                  <p className="mt-1 text-xs text-red-400">
+                    {errors.setupGuide.message}
+                  </p>
+                )}
+              </div>
+              <div>
+                <Label htmlFor="documentationUrl">Docs URL (optional)</Label>
+                <Input
+                  id="documentationUrl"
+                  className="mt-1.5"
+                  placeholder="https://…"
+                  {...register("documentationUrl")}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Category & stack</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
               <div>
                 <Label>Category</Label>
                 <select

@@ -8,7 +8,7 @@ import { ProjectCard } from "@/components/projects/project-card";
 import { VerifiedTick } from "@/components/verified-tick";
 import { publicRoleLabel, type AppRole } from "@/lib/rbac";
 import { formatNumber } from "@/lib/utils";
-import { GraduationCap, Code2, Globe, Loader2 } from "lucide-react";
+import { GraduationCap, Code2, Globe, Loader2, LifeBuoy, Phone } from "lucide-react";
 import type { DemoProject } from "@/lib/demo-data";
 
 type ProfileUser = {
@@ -25,6 +25,8 @@ type ProfileUser = {
   projectsCount?: number;
   website?: string | null;
   githubUrl?: string | null;
+  supportNote?: string | null;
+  whatsapp?: string | null;
 };
 
 export default function PortfolioPage() {
@@ -112,6 +114,23 @@ export default function PortfolioPage() {
               </div>
               <p className="mt-1 text-muted-foreground">@{user.username}</p>
               <p className="mt-3 max-w-2xl text-foreground/80">{user.bio}</p>
+              {user.supportNote ? (
+                <div className="mt-4 max-w-2xl rounded-xl border border-border bg-card/60 p-4">
+                  <p className="flex items-center gap-2 text-sm font-medium text-foreground">
+                    <LifeBuoy className="h-4 w-4 text-primary" />
+                    Buyer support after purchase
+                  </p>
+                  <p className="mt-2 whitespace-pre-wrap text-sm text-muted">
+                    {user.supportNote}
+                  </p>
+                  {user.whatsapp ? (
+                    <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Phone className="h-3.5 w-3.5" />
+                      WhatsApp / phone: {user.whatsapp}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
               <p className="mt-3 flex items-center gap-2 text-sm text-muted">
                 <GraduationCap className="h-4 w-4 text-primary" />
                 {user.university}

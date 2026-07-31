@@ -108,6 +108,63 @@ export async function POST(req: Request) {
       );
     }
 
+    // Seller-facing profile fields (bio, support, links)
+    let profileUser = result.user;
+    const bio =
+      typeof body.bio === "string" ? sanitizeText(body.bio, 500) : undefined;
+    const supportNote =
+      typeof body.supportNote === "string"
+        ? sanitizeText(body.supportNote, 1000)
+        : undefined;
+    const whatsapp =
+      typeof body.whatsapp === "string"
+        ? sanitizeText(body.whatsapp, 40)
+        : undefined;
+    const website =
+      typeof body.website === "string" ? sanitizeText(body.website, 200) : undefined;
+    const githubUrl =
+      typeof body.githubUrl === "string"
+        ? sanitizeText(body.githubUrl, 200)
+        : undefined;
+    const skills = Array.isArray(body.skills)
+      ? body.skills
+          .filter((s: unknown): s is string => typeof s === "string")
+          .map((s: string) => sanitizeText(s, 40))
+          .filter(Boolean)
+          .slice(0, 20)
+      : undefined;
+
+    const wantsProfilePatch =
+      bio !== undefined ||
+      supportNote !== undefined ||
+      whatsapp !== undefined ||
+      website !== undefined ||
+      githubUrl !== undefined ||
+      skills !== undefined;
+
+    if (wantsProfilePatch && !result.demo) {
+      try {
+        const { getPrisma, pingDatabase } = await import("@/lib/prisma");
+        const db = await pingDatabase();
+        if (db.ok) {
+          const prisma = await getPrisma();
+          profileUser = await prisma.user.update({
+            where: { id: result.user.id },
+            data: {
+              ...(bio !== undefined ? { bio } : {}),
+              ...(supportNote !== undefined ? { supportNote } : {}),
+              ...(whatsapp !== undefined ? { whatsapp } : {}),
+              ...(website !== undefined ? { website: website || null } : {}),
+              ...(githubUrl !== undefined ? { githubUrl: githubUrl || null } : {}),
+              ...(skills !== undefined ? { skills } : {}),
+            },
+          });
+        }
+      } catch {
+        /* keep ensureAppUser row */
+      }
+    }
+
     let verified = false;
     try {
       const { getPrisma, pingDatabase } = await import("@/lib/prisma");
@@ -117,7 +174,7 @@ export async function POST(req: Request) {
         const badge = await prisma.userBadge.findUnique({
           where: {
             userId_badge: {
-              userId: result.user.id,
+              userId: profileUser.id,
               badge: "VERIFIED_CREATOR",
             },
           },
@@ -131,15 +188,21 @@ export async function POST(req: Request) {
     return NextResponse.json({
       success: true,
       user: {
-        id: result.user.id,
-        email: result.user.email,
-        name: result.user.name,
-        username: result.user.username,
-        role: result.user.role,
-        clerkId: result.user.clerkId,
-        avatar: result.user.avatar,
-        university: result.user.university,
-        isApproved: result.user.isApproved,
+        id: profileUser.id,
+        email: profileUser.email,
+        name: profileUser.name,
+        username: profileUser.username,
+        role: profileUser.role,
+        clerkId: profileUser.clerkId,
+        avatar: profileUser.avatar,
+        university: profileUser.university,
+        isApproved: profileUser.isApproved,
+        bio: profileUser.bio,
+        supportNote: (profileUser as { supportNote?: string | null }).supportNote,
+        whatsapp: (profileUser as { whatsapp?: string | null }).whatsapp,
+        website: profileUser.website,
+        githubUrl: profileUser.githubUrl,
+        skills: profileUser.skills,
         verified,
       },
       demo: result.demo,

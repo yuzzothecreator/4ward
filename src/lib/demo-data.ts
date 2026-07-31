@@ -16,6 +16,9 @@ export type DemoProject = {
   demoUrl: string;
   githubRepo?: string;
   sourceFile?: string;
+  /** How buyers install / use the product */
+  setupGuide?: string;
+  documentationUrl?: string;
   technologyStack: string[];
   views: number;
   downloads: number;
@@ -45,6 +48,7 @@ export const demoProjects: DemoProject[] = [
     pricingType: "PAID",
     listingType: "CAMPUS",
     license: "SOURCE_CODE",
+    setupGuide: "1) Download the ZIP after purchase.\n2) Copy .env.example to .env and set keys.\n3) Run npm install && npm run dev.\n4) Message the seller on 4ward if you get stuck.",
     status: "PUBLISHED",
     coverImage:
       "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=800&q=80",
@@ -81,6 +85,7 @@ export const demoProjects: DemoProject[] = [
     pricingType: "PAID",
     listingType: "MARKET",
     license: "COMMERCIAL",
+    setupGuide: "1) Download source after payment.\n2) Follow README for production deploy (Docker or Vercel).\n3) Configure env vars for DB and payments.\n4) Contact the seller via profile support note for commercial onboarding.",
     status: "PUBLISHED",
     coverImage:
       "https://images.unsplash.com/photo-1563986768609-322da13575f3?w=800&q=80",
@@ -115,6 +120,7 @@ export const demoProjects: DemoProject[] = [
     pricingType: "PAID",
     listingType: "CAMPUS",
     license: "EDUCATIONAL",
+    setupGuide: "1) Download the ZIP after purchase.\n2) Copy .env.example to .env and set keys.\n3) Run npm install && npm run dev.\n4) Message the seller on 4ward if you get stuck.",
     status: "PUBLISHED",
     coverImage:
       "https://images.unsplash.com/photo-1625246333195-78d9c38ad449?w=800&q=80",
@@ -149,6 +155,7 @@ export const demoProjects: DemoProject[] = [
     pricingType: "PAID",
     listingType: "CAMPUS",
     license: "SOURCE_CODE",
+    setupGuide: "1) Download the ZIP after purchase.\n2) Copy .env.example to .env and set keys.\n3) Run npm install && npm run dev.\n4) Message the seller on 4ward if you get stuck.",
     status: "PUBLISHED",
     coverImage:
       "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=800&q=80",
@@ -183,6 +190,7 @@ export const demoProjects: DemoProject[] = [
     pricingType: "PAID",
     listingType: "MARKET",
     license: "COMMERCIAL",
+    setupGuide: "1) Download source after payment.\n2) Follow README for production deploy (Docker or Vercel).\n3) Configure env vars for DB and payments.\n4) Contact the seller via profile support note for commercial onboarding.",
     status: "PUBLISHED",
     coverImage:
       "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=800&q=80",
@@ -217,6 +225,7 @@ export const demoProjects: DemoProject[] = [
     pricingType: "FREE",
     listingType: "CAMPUS",
     license: "EDUCATIONAL",
+    setupGuide: "1) Download the ZIP after purchase.\n2) Copy .env.example to .env and set keys.\n3) Run npm install && npm run dev.\n4) Message the seller on 4ward if you get stuck.",
     status: "PUBLISHED",
     coverImage:
       "https://images.unsplash.com/photo-1639762681485-074b7f938ba0?w=800&q=80",
@@ -252,6 +261,7 @@ export const demoProjects: DemoProject[] = [
     pricingType: "PAID",
     listingType: "CAMPUS",
     license: "SOURCE_CODE",
+    setupGuide: "1) Download the ZIP after purchase.\n2) Copy .env.example to .env and set keys.\n3) Run npm install && npm run dev.\n4) Message the seller on 4ward if you get stuck.",
     status: "PUBLISHED",
     coverImage:
       "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&q=80",
@@ -286,6 +296,7 @@ export const demoProjects: DemoProject[] = [
     pricingType: "PAID",
     listingType: "MARKET",
     license: "COMMERCIAL",
+    setupGuide: "1) Download source after payment.\n2) Follow README for production deploy (Docker or Vercel).\n3) Configure env vars for DB and payments.\n4) Contact the seller via profile support note for commercial onboarding.",
     status: "PUBLISHED",
     coverImage:
       "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=800&q=80",
@@ -320,6 +331,9 @@ export const demoUsers = [
     role: "SELLER",
     university: "UDSM",
     bio: "Full-stack developer & CS student at UDSM. Building tools for Tanzanian campuses.",
+    supportNote:
+      "Message me on 4ward after purchase for install help. I reply within 24 hours (Mon–Sat).",
+    whatsapp: "255712000001",
     skills: ["Next.js", "TypeScript", "Node.js", "Python", "AI"],
     badges: ["VERIFIED_CREATOR", "TOP_SELLER"],
     totalSales: 487,
@@ -334,6 +348,9 @@ export const demoUsers = [
     role: "SELLER",
     university: "DIT",
     bio: "Cybersecurity enthusiast and blockchain developer at DIT.",
+    supportNote:
+      "Commercial onboarding via 4ward messages. Include your company name and deploy target.",
+    whatsapp: "255713000002",
     skills: ["Node.js", "Solidity", "Python", "Docker"],
     badges: ["VERIFIED_CREATOR", "RISING_DEVELOPER"],
     totalSales: 984,
@@ -348,6 +365,8 @@ export const demoUsers = [
     role: "SELLER",
     university: "SUA",
     bio: "IoT & data science builder focused on agri-tech for Tanzania.",
+    supportNote:
+      "I help with sensor wiring questions and dashboard setup after you buy.",
     skills: ["Flutter", "Python", "TensorFlow", "MQTT"],
     badges: ["RISING_DEVELOPER"],
     totalSales: 190,
@@ -362,6 +381,8 @@ export const demoUsers = [
     role: "SELLER",
     university: "ARU",
     bio: "Product designer and full-stack engineer shipping campus tools.",
+    supportNote:
+      "Figma + React Native handoff support via chat for 7 days after purchase.",
     skills: ["Figma", "React Native", "Laravel", "TypeScript"],
     badges: ["VERIFIED_CREATOR"],
     totalSales: 379,
