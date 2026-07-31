@@ -1,7 +1,10 @@
 /**
  * Marketplace RBAC
  * Marketplace: BUYER | SELLER
- * Staff: SUPPORT | ADMIN | SUPER_ADMIN
+ * Staff: SUPPORT (customer desk) | ADMIN | SUPER_ADMIN
+ *
+ * Visibility: SUPER_ADMIN is hidden from Admin & Customer desk directories.
+ * Marketplace buyers/sellers can still see the Super Admin as a normal member.
  */
 
 export type AppRole =
@@ -23,11 +26,16 @@ export type Permission =
   | "support:access"
   | "support:users:view"
   | "support:orders:view"
+  | "support:chat"
+  | "support:resolve"
+  | "support:escalate"
   | "admin:access"
   | "admin:users"
   | "admin:approvals"
+  | "admin:escalations"
   | "admin:roles"
-  | "admin:billing";
+  | "admin:billing"
+  | "admin:audit";
 
 export const APP_ROLES: AppRole[] = [
   "BUYER",
@@ -52,25 +60,33 @@ const SELLER_PERMISSIONS: Permission[] = [
   "dashboard:seller",
 ];
 
+/** Customer desk — help users, chat, resolve, escalate to Admin (not Super Admin). */
 const SUPPORT_PERMISSIONS: Permission[] = [
   ...BUYER_PERMISSIONS,
   "support:access",
   "support:users:view",
   "support:orders:view",
+  "support:chat",
+  "support:resolve",
+  "support:escalate",
 ];
 
+/** Normal admin — seller approvals + BUYER/SELLER roles only. No customer desk. */
 const ADMIN_PERMISSIONS: Permission[] = [
   ...SELLER_PERMISSIONS,
-  ...SUPPORT_PERMISSIONS,
   "admin:access",
   "admin:users",
   "admin:approvals",
+  "admin:escalations",
 ];
 
+/** Super admin — everything (admin + customer desk + audit). */
 const SUPER_ADMIN_PERMISSIONS: Permission[] = [
   ...ADMIN_PERMISSIONS,
+  ...SUPPORT_PERMISSIONS,
   "admin:roles",
   "admin:billing",
+  "admin:audit",
 ];
 
 export const ROLE_PERMISSIONS: Record<AppRole, Permission[]> = {
@@ -84,7 +100,7 @@ export const ROLE_PERMISSIONS: Record<AppRole, Permission[]> = {
 export const ROLE_LABELS: Record<AppRole, string> = {
   BUYER: "Buyer",
   SELLER: "Seller",
-  SUPPORT: "Customer service",
+  SUPPORT: "Customer desk",
   ADMIN: "Admin",
   SUPER_ADMIN: "Super admin",
 };
@@ -159,7 +175,6 @@ export function hasAllPermissions(
   return permissions.every((p) => hasPermission(role, p));
 }
 
-/** True if `role` is allowed when route requires one of `allowed` */
 export function roleAllowed(
   role: AppRole | null | undefined,
   allowed: AppRole[]
@@ -168,16 +183,13 @@ export function roleAllowed(
   return allowed.includes(role);
 }
 
-/**
- * Promote toward a higher role without demoting.
- * BUYER → SELLER → SUPPORT → ADMIN → SUPER_ADMIN
- */
 export function elevateRole(current: AppRole, next: AppRole): AppRole {
   return ROLE_RANK[next] > ROLE_RANK[current] ? next : current;
 }
 
 export function defaultRedirectForRole(role: AppRole): string {
-  if (role === "SUPER_ADMIN" || role === "ADMIN") return "/dashboard/admin";
+  if (role === "SUPER_ADMIN") return "/dashboard/admin";
+  if (role === "ADMIN") return "/dashboard/admin";
   if (role === "SUPPORT") return "/dashboard/support";
   return "/welcome";
 }
@@ -194,4 +206,30 @@ export function canAssignRole(
   targetRole: AppRole
 ): boolean {
   return assignableRolesFor(actor).includes(targetRole);
+}
+
+/**
+ * Admin & Customer desk must not see Super Admin accounts.
+ * Super Admin (and marketplace public APIs) may still list them.
+ */
+export function canSeeSuperAdminInStaffTools(
+  actor: AppRole | null | undefined
+): boolean {
+  return actor === "SUPER_ADMIN";
+}
+
+/** Prisma `where` fragment to hide SUPER_ADMIN from non–super-admin staff. */
+export function staffVisibleUsersWhere(actor: AppRole | null | undefined) {
+  if (canSeeSuperAdminInStaffTools(actor)) return {};
+  return { role: { not: "SUPER_ADMIN" as const } };
+}
+
+/**
+ * Label for marketplace / public surfaces — never reveal Super Admin rank.
+ * Staff ranks shown as Member; Admin/CS stay hidden from public role chips when needed.
+ */
+export function publicRoleLabel(role: AppRole): string {
+  if (role === "SUPER_ADMIN") return "Member";
+  if (role === "ADMIN" || role === "SUPPORT") return "Member";
+  return ROLE_LABELS[role];
 }

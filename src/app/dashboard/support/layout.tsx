@@ -10,7 +10,7 @@ export default function SupportLayout({
       roles={["SUPPORT", "ADMIN", "SUPER_ADMIN"]}
       permission="support:access"
       fallbackHref="/dashboard"
-      message="Customer service access required."
+      message="Customer desk access required."
     >
       {children}
     </RequireRole>

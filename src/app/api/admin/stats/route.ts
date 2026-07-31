@@ -1,5 +1,6 @@
 import { getPrisma, pingDatabase } from "@/lib/prisma";
 import { requireAdminActor } from "@/lib/admin-auth";
+import { staffVisibleUsersWhere } from "@/lib/rbac";
 import { jsonSecure } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
@@ -20,6 +21,10 @@ export async function GET(req: Request) {
   try {
     const prisma = await getPrisma();
     const since30d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const staffRoles =
+      gate.role === "SUPER_ADMIN"
+        ? (["SUPPORT", "ADMIN", "SUPER_ADMIN"] as const)
+        : (["SUPPORT", "ADMIN"] as const);
 
     const [
       users,
@@ -39,12 +44,13 @@ export async function GET(req: Request) {
       recentUsers,
       recentAudit,
       publishedProjects,
+      pendingEscalations,
     ] = await Promise.all([
-      prisma.user.count(),
+      prisma.user.count({ where: staffVisibleUsersWhere(gate.role) }),
       prisma.user.count({ where: { role: "SELLER" } }),
       prisma.user.count({ where: { role: "BUYER" } }),
       prisma.user.count({
-        where: { role: { in: ["SUPPORT", "ADMIN", "SUPER_ADMIN"] } },
+        where: { role: { in: [...staffRoles] } },
       }),
       prisma.project.count(),
       prisma.project.count({
@@ -93,6 +99,7 @@ export async function GET(req: Request) {
         },
       }),
       prisma.user.findMany({
+        where: staffVisibleUsersWhere(gate.role),
         take: 8,
         orderBy: { createdAt: "desc" },
         select: {
@@ -104,21 +111,29 @@ export async function GET(req: Request) {
           isApproved: true,
         },
       }),
-      prisma.auditLog.findMany({
-        take: 12,
-        orderBy: { createdAt: "desc" },
-        select: {
-          id: true,
-          action: true,
-          entity: true,
-          entityId: true,
-          ipAddress: true,
-          createdAt: true,
-          metadata: true,
-        },
-      }),
+      gate.role === "SUPER_ADMIN"
+        ? prisma.auditLog.findMany({
+            take: 12,
+            orderBy: { createdAt: "desc" },
+            select: {
+              id: true,
+              action: true,
+              entity: true,
+              entityId: true,
+              ipAddress: true,
+              createdAt: true,
+              metadata: true,
+            },
+          })
+        : Promise.resolve([]),
       prisma.project.count({
         where: { status: { in: ["PUBLISHED", "APPROVED"] } },
+      }),
+      prisma.auditLog.count({
+        where: {
+          action: "support.escalate",
+          createdAt: { gte: since30d },
+        },
       }),
     ]);
 
@@ -136,6 +151,7 @@ export async function GET(req: Request) {
         gmv: gmv._sum.amount || 0,
         gmv30d: gmv30d._sum.amount || 0,
         openReports,
+        pendingEscalations,
       },
       pendingProjects: pendingList.map((p) => ({
         id: p.id,
@@ -178,6 +194,7 @@ export async function GET(req: Request) {
         rateLimited: true,
         auditLogging: true,
       },
+      actorRole: gate.role,
       demo: gate.demo,
     });
   } catch (err) {

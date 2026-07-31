@@ -9,6 +9,7 @@ import {
   canAssignRole,
   isAppRole,
   isStaffRole,
+  staffVisibleUsersWhere,
   type AppRole,
 } from "@/lib/rbac";
 import { getAdminEmail } from "@/lib/admin-config";
@@ -57,6 +58,7 @@ export async function GET(req: Request) {
 
     const prisma = await getPrisma();
     const users = await prisma.user.findMany({
+      where: staffVisibleUsersWhere(gate.role),
       orderBy: { createdAt: "desc" },
       take: 200,
       select: {

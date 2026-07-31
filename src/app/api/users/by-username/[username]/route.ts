@@ -38,6 +38,7 @@ export async function GET(
           skills: true,
           website: true,
           githubUrl: true,
+          role: true,
           badges: { select: { badge: true } },
           projects: {
             where: { status: { in: ["PUBLISHED", "APPROVED"] } },
@@ -87,6 +88,7 @@ export async function GET(
             githubUrl: user.githubUrl,
             badges,
             verified,
+            role: user.role,
             totalSales: user._count.purchases,
             projectsCount: user._count.projects,
           },

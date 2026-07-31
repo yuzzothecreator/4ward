@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { ProjectCard } from "@/components/projects/project-card";
 import { VerifiedTick } from "@/components/verified-tick";
+import { publicRoleLabel, type AppRole } from "@/lib/rbac";
 import { formatNumber } from "@/lib/utils";
 import { GraduationCap, Code2, Globe, Loader2 } from "lucide-react";
 import type { DemoProject } from "@/lib/demo-data";
@@ -19,6 +20,7 @@ type ProfileUser = {
   skills: string[];
   badges: string[];
   verified: boolean;
+  role?: AppRole;
   totalSales: number;
   projectsCount?: number;
   website?: string | null;
@@ -99,6 +101,9 @@ export default function PortfolioPage() {
                   {user.name}
                   {verified ? <VerifiedTick className="h-7 w-7" /> : null}
                 </h1>
+                <Badge variant="secondary">
+                  {publicRoleLabel((user.role as AppRole) || "BUYER")}
+                </Badge>
                 {user.badges.map((b) => (
                   <Badge key={b} variant="success">
                     {b.replace(/_/g, " ")}

@@ -2,10 +2,18 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Headphones, Loader2, RefreshCw } from "lucide-react";
+import {
+  Headphones,
+  Loader2,
+  RefreshCw,
+  Send,
+  ArrowUpRight,
+  CheckCircle2,
+} from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { useAppStore } from "@/store/use-app-store";
 import { ROLE_LABELS, type AppRole, hasPermission } from "@/lib/rbac";
 import { adminHeaders } from "@/lib/admin-session";
@@ -30,19 +38,46 @@ type SupportPurchase = {
   buyerName: string;
   buyerEmail: string;
   projectTitle: string;
-  projectSlug: string;
+};
+
+type SupportReport = {
+  id: string;
+  reason: string;
+  description: string | null;
+  status: string;
+  createdAt: string;
+  reporterName: string;
+  reporterEmail: string;
+  reporterId: string;
+  projectTitle: string | null;
+};
+
+type SupportMessage = {
+  id: string;
+  content: string;
+  createdAt: string;
+  sender: { id: string; name: string; email: string };
+  receiver: { id: string; name: string; email: string };
 };
 
 export default function SupportPage() {
   const user = useAppStore((s) => s.user);
   const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [ok, setOk] = useState("");
   const [users, setUsers] = useState<SupportUser[]>([]);
   const [purchases, setPurchases] = useState<SupportPurchase[]>([]);
+  const [reports, setReports] = useState<SupportReport[]>([]);
+  const [conversations, setConversations] = useState<SupportMessage[]>([]);
   const [counts, setCounts] = useState({
     openReports: 0,
     pendingVerification: 0,
+    openEscalations: 0,
   });
+  const [selectedUserId, setSelectedUserId] = useState("");
+  const [chatText, setChatText] = useState("");
+  const [escalateNote, setEscalateNote] = useState("");
 
   const load = useCallback(async () => {
     if (!user?.email) {
@@ -61,13 +96,31 @@ export default function SupportPage() {
       if (!res.ok) {
         setError(
           [data.error, data.hint].filter(Boolean).join(" — ") ||
-            "Failed to load support desk"
+            "Failed to load customer desk"
         );
         return;
       }
       setUsers(data.recentUsers || []);
       setPurchases(data.recentPurchases || []);
-      setCounts(data.counts || { openReports: 0, pendingVerification: 0 });
+      setReports(data.reports || []);
+      setConversations(data.conversations || []);
+      setCounts(
+        data.counts || {
+          openReports: 0,
+          pendingVerification: 0,
+          openEscalations: 0,
+        }
+      );
+      if (!selectedUserId && (data.recentUsers || [])[0]?.id) {
+        setSelectedUserId(data.recentUsers[0].id);
+      } else if (
+        selectedUserId &&
+        !(data.recentUsers || []).some(
+          (u: SupportUser) => u.id === selectedUserId
+        )
+      ) {
+        setSelectedUserId(data.recentUsers?.[0]?.id || "");
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Network error");
     } finally {
@@ -76,10 +129,43 @@ export default function SupportPage() {
   }, [user]);
 
   useEffect(() => {
-    load();
+    void load();
   }, [load]);
 
+  async function runAction(body: Record<string, unknown>) {
+    if (!user?.email) return;
+    setBusy(true);
+    setError("");
+    setOk("");
+    try {
+      await ensureAdminSessionWithPrompt(user);
+      const res = await fetch("/api/support/overview", {
+        method: "POST",
+        headers: adminHeaders({ "Content-Type": "application/json" }),
+        credentials: "same-origin",
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(
+          [data.error, data.hint].filter(Boolean).join(" — ") || "Action failed"
+        );
+        return;
+      }
+      setOk("Saved");
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Network error");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const canAdmin = hasPermission(user?.role, "admin:access");
+  const canChat = hasPermission(user?.role, "support:chat");
+  const canResolve = hasPermission(user?.role, "support:resolve");
+  const canEscalate = hasPermission(user?.role, "support:escalate");
+  const selected = users.find((u) => u.id === selectedUserId);
 
   return (
     <div className="space-y-6">
@@ -87,11 +173,11 @@ export default function SupportPage() {
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold text-foreground">
             <Headphones className="h-6 w-6 text-primary" />
-            Customer service
+            Customer desk
           </h1>
           <p className="mt-1 text-sm text-muted">
-            Read-only help desk — recent users and orders. Role changes and
-            listing moderation need Admin.
+            Help users, resolve issues, and escalate to Admin when needed. Super
+            Admin accounts stay hidden from this desk.
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={load} disabled={loading}>
@@ -109,8 +195,9 @@ export default function SupportPage() {
           {error}
         </p>
       )}
+      {ok && <p className="text-sm text-primary">{ok}</p>}
 
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-3">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted">
@@ -119,6 +206,16 @@ export default function SupportPage() {
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-semibold">{counts.openReports}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted">
+              Escalations (30d)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-semibold">{counts.openEscalations}</p>
           </CardContent>
         </Card>
         <Card>
@@ -146,26 +243,170 @@ export default function SupportPage() {
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Recent users</CardTitle>
+            <CardTitle className="text-base">Help a user</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {loading && users.length === 0 ? (
-              <p className="text-sm text-muted">Loading…</p>
-            ) : users.length === 0 ? (
-              <p className="text-sm text-muted">No users yet.</p>
-            ) : (
-              users.map((u) => (
-                <div
-                  key={u.id}
-                  className="flex items-start justify-between gap-2 border-b border-border/60 pb-2 last:border-0"
+            <label className="block text-xs text-muted">Select user</label>
+            <select
+              className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+              value={selectedUserId}
+              onChange={(e) => setSelectedUserId(e.target.value)}
+            >
+              {users.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name} · {u.email} ({ROLE_LABELS[u.role]})
+                </option>
+              ))}
+            </select>
+
+            {canChat && (
+              <div className="space-y-2">
+                <Textarea
+                  placeholder="Reply from Customer desk…"
+                  value={chatText}
+                  onChange={(e) => setChatText(e.target.value)}
+                  rows={3}
+                />
+                <Button
+                  size="sm"
+                  disabled={busy || !chatText.trim() || !selectedUserId}
+                  onClick={() =>
+                    runAction({
+                      action: "message_user",
+                      receiverId: selectedUserId,
+                      content: chatText,
+                    }).then(() => setChatText(""))
+                  }
                 >
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">{u.name}</p>
-                    <p className="truncate text-xs text-muted">{u.email}</p>
+                  <Send className="h-4 w-4" />
+                  Send message
+                </Button>
+              </div>
+            )}
+
+            {canEscalate && (
+              <div className="space-y-2 border-t border-border pt-3">
+                <p className="text-xs text-muted">
+                  Escalate to Admin (not Super Admin) if the user needs admin
+                  help.
+                </p>
+                <Textarea
+                  placeholder="Why escalate? (min 10 characters)"
+                  value={escalateNote}
+                  onChange={(e) => setEscalateNote(e.target.value)}
+                  rows={2}
+                />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={busy || escalateNote.trim().length < 10}
+                  onClick={() =>
+                    runAction({
+                      action: "escalate_to_admin",
+                      userId: selectedUserId,
+                      note: escalateNote,
+                    }).then(() => setEscalateNote(""))
+                  }
+                >
+                  <ArrowUpRight className="h-4 w-4" />
+                  Escalate to Admin
+                </Button>
+              </div>
+            )}
+
+            {selected && (
+              <p className="text-xs text-muted-foreground">
+                Helping {selected.name} · @{selected.username}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Open reports</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {reports.length === 0 ? (
+              <p className="text-sm text-muted">No open reports.</p>
+            ) : (
+              reports.map((r) => (
+                <div
+                  key={r.id}
+                  className="rounded-xl border border-border p-3 text-sm"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="font-medium">{r.reason}</p>
+                      <p className="text-xs text-muted">
+                        {r.reporterName} · {r.reporterEmail}
+                      </p>
+                      {r.description && (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {r.description}
+                        </p>
+                      )}
+                    </div>
+                    <Badge variant="warning">{r.status}</Badge>
                   </div>
-                  <Badge variant="secondary" className="shrink-0">
-                    {ROLE_LABELS[u.role]}
-                  </Badge>
+                  {canResolve && (
+                    <div className="mt-2 flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={busy}
+                        onClick={() =>
+                          runAction({
+                            action: "resolve_report",
+                            reportId: r.id,
+                            status: "RESOLVED",
+                          })
+                        }
+                      >
+                        <CheckCircle2 className="h-4 w-4" />
+                        Resolve
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        disabled={busy}
+                        onClick={() =>
+                          runAction({
+                            action: "resolve_report",
+                            reportId: r.id,
+                            status: "DISMISSED",
+                          })
+                        }
+                      >
+                        Dismiss
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Recent conversations</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {conversations.length === 0 ? (
+              <p className="text-sm text-muted">No messages yet.</p>
+            ) : (
+              conversations.slice(0, 12).map((m) => (
+                <div
+                  key={m.id}
+                  className="border-b border-border/60 pb-2 text-sm last:border-0"
+                >
+                  <p className="text-xs text-muted">
+                    {m.sender.name} → {m.receiver.name}
+                  </p>
+                  <p className="line-clamp-2">{m.content}</p>
                 </div>
               ))
             )}
@@ -177,9 +418,7 @@ export default function SupportPage() {
             <CardTitle className="text-base">Recent purchases</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {loading && purchases.length === 0 ? (
-              <p className="text-sm text-muted">Loading…</p>
-            ) : purchases.length === 0 ? (
+            {purchases.length === 0 ? (
               <p className="text-sm text-muted">No purchases yet.</p>
             ) : (
               purchases.map((p) => (
@@ -187,18 +426,12 @@ export default function SupportPage() {
                   key={p.id}
                   className="border-b border-border/60 pb-2 last:border-0"
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="truncate text-sm font-medium">
-                      {p.projectTitle}
-                    </p>
-                    <Badge variant="secondary">{p.status}</Badge>
-                  </div>
+                  <p className="truncate text-sm font-medium">{p.projectTitle}</p>
                   <p className="text-xs text-muted">
                     {p.buyerName} · {p.buyerEmail}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    TZS {Number(p.amount).toLocaleString()} ·{" "}
-                    {new Date(p.createdAt).toLocaleString()}
+                    TZS {Number(p.amount).toLocaleString()} · {p.status}
                   </p>
                 </div>
               ))

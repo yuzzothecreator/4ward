@@ -90,7 +90,7 @@ const navItems: NavItem[] = [
   },
   {
     href: "/dashboard/support",
-    label: "Support desk",
+    label: "Customer desk",
     icon: Headphones,
     permissions: ["support:access"],
   },
@@ -111,6 +111,12 @@ const navItems: NavItem[] = [
     label: "Blue ticks",
     icon: BadgeCheck,
     permissions: ["admin:approvals"],
+  },
+  {
+    href: "/dashboard/admin/audit",
+    label: "Audit log",
+    icon: Shield,
+    permissions: ["admin:audit"],
   },
 ];
 

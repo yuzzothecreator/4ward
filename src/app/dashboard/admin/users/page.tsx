@@ -270,8 +270,8 @@ export default function AdminUsersPage() {
           <p className="text-muted">
             Live database users — roles, approvals, and profile fields.
             {canAssignStaff
-              ? " As Super Admin you can promote Support / Admin."
-              : " You can approve sellers; only Super Admin assigns staff roles."}
+              ? " As Super Admin you can promote Customer desk / Admin (and see all staff)."
+              : " You can approve sellers and set Buyer/Seller only. Super Admin accounts are hidden here."}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
             Signed in as {actorEmail}
