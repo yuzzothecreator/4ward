@@ -4,6 +4,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
+import { ClerkAuthSync } from "@/components/auth/clerk-auth-sync";
 import "./globals.css";
 
 const geistMono = Geist_Mono({
@@ -37,6 +38,7 @@ export default function RootLayout({
     >
       <body className="flex min-h-full flex-col overflow-x-clip bg-background font-sans text-foreground">
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
+          {clerkKey ? <ClerkAuthSync /> : null}
           <Navbar />
           <main className="min-w-0 flex-1 pt-14">{children}</main>
           <Footer />

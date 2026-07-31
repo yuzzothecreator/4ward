@@ -1,8 +1,27 @@
 "use client";
 
-import { SignUp } from "@clerk/nextjs";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { SignUp, useAuth } from "@clerk/nextjs";
 
 export function ClerkSignUp() {
+  const { isLoaded, isSignedIn } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (isLoaded && isSignedIn) {
+      router.replace("/dashboard");
+    }
+  }, [isLoaded, isSignedIn, router]);
+
+  if (!isLoaded) {
+    return <div className="text-sm text-muted">Loading…</div>;
+  }
+
+  if (isSignedIn) {
+    return <div className="text-sm text-muted">Already signed in — opening dashboard…</div>;
+  }
+
   return (
     <SignUp
       routing="hash"

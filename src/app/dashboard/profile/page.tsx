@@ -17,6 +17,15 @@ export default function ProfilePage() {
   const [skillInput, setSkillInput] = useState("");
   const [saved, setSaved] = useState(false);
 
+  if (!user) {
+    return (
+      <div className="mx-auto max-w-2xl space-y-4 py-10 text-center">
+        <h1 className="text-2xl font-bold text-foreground">Profile</h1>
+        <p className="text-sm text-muted">Loading your account…</p>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <div>
@@ -29,47 +38,46 @@ export default function ProfilePage() {
           <div className="flex items-center gap-4">
             <Avatar className="h-16 w-16">
               <AvatarImage
-                src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(user?.email || "You")}`}
+                src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(user.email)}`}
               />
               <AvatarFallback>
-                {(user?.name || "YO").slice(0, 2).toUpperCase()}
+                {user.name.slice(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>
             <div>
-              <CardTitle>{user?.name || "Your profile"}</CardTitle>
+              <CardTitle>{user.name}</CardTitle>
+              <p className="text-sm text-muted-foreground">{user.email}</p>
               <p className="text-sm text-muted-foreground">
-                4ward.com/{user?.username || "you"}
+                4ward.com/{user.username}
               </p>
-              {user?.role && (
-                <Badge className="mt-2" variant="secondary">
-                  {ROLE_LABELS[user.role]}
-                </Badge>
-              )}
+              <Badge className="mt-2" variant="secondary">
+                {ROLE_LABELS[user.role]}
+              </Badge>
             </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
             <Label>Name</Label>
-            <Input className="mt-1.5" defaultValue={user?.name || "Alex Creator"} key={user?.email} />
+            <Input className="mt-1.5" defaultValue={user.name} key={`name-${user.email}`} />
           </div>
           <div>
             <Label>Username</Label>
-            <Input className="mt-1.5" defaultValue={user?.username || "alexcreator"} key={`u-${user?.email}`} />
+            <Input className="mt-1.5" defaultValue={user.username} key={`u-${user.email}`} />
           </div>
           <div>
             <Label>University</Label>
             <Input
               className="mt-1.5"
-              defaultValue={user?.university || "University of Nairobi"}
-              key={`uni-${user?.email}`}
+              defaultValue={user.university}
+              key={`uni-${user.email}`}
             />
           </div>
           <div>
             <Label>Role</Label>
             <Input
               className="mt-1.5"
-              value={user ? ROLE_LABELS[user.role] : "—"}
+              value={ROLE_LABELS[user.role]}
               readOnly
             />
             <p className="mt-1 text-xs text-muted-foreground">
@@ -78,7 +86,7 @@ export default function ProfilePage() {
           </div>
           <div>
             <Label>Bio</Label>
-            <Textarea className="mt-1.5" defaultValue="CS student building tools for campus life." />
+            <Textarea className="mt-1.5" placeholder="Tell buyers about yourself…" />
           </div>
           <div>
             <Label>Skills</Label>
