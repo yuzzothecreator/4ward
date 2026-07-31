@@ -143,7 +143,7 @@ export async function ensureAppUser(input: EnsureAppUserInput) {
         name,
         username,
         role,
-        university: input.university?.trim() || "University of Dar es Salaam",
+        university: input.university?.trim() || "UDSM",
         avatar: input.avatar || null,
         isApproved: isAdminEmail(email),
       },

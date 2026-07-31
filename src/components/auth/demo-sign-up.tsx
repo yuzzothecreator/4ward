@@ -11,6 +11,7 @@ import { useAppStore } from "@/store/use-app-store";
 import { DEMO_ADMIN_EMAIL } from "@/lib/rbac";
 import { UniversitySelect } from "@/components/university-select";
 import { canonicalizeInstitution } from "@/lib/tanzania-institutions";
+import { BrandLogo } from "@/components/brand-logo";
 
 export function DemoSignUp() {
   const router = useRouter();
@@ -49,6 +50,9 @@ export function DemoSignUp() {
   return (
     <Card className="w-full max-w-md border-border bg-card">
       <CardHeader className="text-center">
+        <div className="mb-3 flex justify-center">
+          <BrandLogo size="md" href={false} />
+        </div>
         <CardTitle>Create your 4ward account</CardTitle>
         <CardDescription>
           Choose how you&apos;ll use the marketplace. You can sell later anytime.

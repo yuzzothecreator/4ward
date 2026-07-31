@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/store/use-app-store";
 import type { DemoProject } from "@/lib/demo-data";
 import Link from "next/link";
+import { institutionShort } from "@/lib/tanzania-institutions";
 
 type Availability = {
   allowed: boolean;
@@ -139,8 +140,9 @@ export function PurchaseButton({ project }: { project: DemoProject }) {
         </p>
       ) : user?.university ? (
         <p className="text-[11px] text-muted-foreground">
-          Campus rule: one buyer from {user.university} per project for 4 months
-          (presentation exclusivity).
+          Campus rule: one buyer from{" "}
+          {institutionShort(user.university) || user.university} per project for
+          4 months (presentation exclusivity).
         </p>
       ) : null}
     </div>

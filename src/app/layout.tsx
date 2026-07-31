@@ -21,6 +21,10 @@ export const metadata: Metadata = {
   description:
     "4ward helps students and developers sell, showcase, and monetize software projects. The marketplace for academic and personal digital products.",
   keywords: ["marketplace", "student projects", "sell code", "SaaS", "developers"],
+  icons: {
+    icon: "/logo-mark.png",
+    apple: "/logo-mark.png",
+  },
 };
 
 const clerkKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;

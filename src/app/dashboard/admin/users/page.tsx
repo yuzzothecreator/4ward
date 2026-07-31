@@ -19,6 +19,11 @@ import {
 } from "@/lib/rbac";
 import { adminHeaders } from "@/lib/admin-session";
 import { ensureAdminSessionWithPrompt } from "@/lib/admin-session-client";
+import { UniversitySelect } from "@/components/university-select";
+import {
+  canonicalizeInstitution,
+  institutionShort,
+} from "@/lib/tanzania-institutions";
 
 type ManagedUser = {
   id: string;
@@ -146,7 +151,9 @@ export default function AdminUsersPage() {
       const payload: Record<string, unknown> = {
         userId: u.id,
         name: editDraft.name,
-        university: editDraft.university,
+        university:
+          canonicalizeInstitution(editDraft.university) ||
+          editDraft.university,
         isApproved: editDraft.isApproved,
       };
       // Only send role when it actually changes and is allowed for this actor
@@ -357,7 +364,8 @@ export default function AdminUsersPage() {
                         ) : null}
                       </p>
                       <p className="truncate text-xs text-muted-foreground">
-                        {u.email} · @{u.username} · {u.university}
+                        {u.email} · @{u.username} ·{" "}
+                        {institutionShort(u.university) || u.university}
                       </p>
                       <p className="break-words text-xs text-muted-foreground">
                         {u.projectsCount} projects · {u.purchasesCount} purchases ·{" "}
@@ -428,17 +436,15 @@ export default function AdminUsersPage() {
                         />
                       </div>
                       <div>
-                        <Label>University</Label>
-                        <Input
-                          className="mt-1.5"
-                          value={editDraft.university}
-                          onChange={(e) =>
-                            setEditDraft({
-                              ...editDraft,
-                              university: e.target.value,
-                            })
-                          }
-                        />
+                        <Label>University / institute</Label>
+                        <div className="mt-1.5">
+                          <UniversitySelect
+                            value={editDraft.university}
+                            onChange={(university) =>
+                              setEditDraft({ ...editDraft, university })
+                            }
+                          />
+                        </div>
                       </div>
                       <div>
                         <Label>Role</Label>

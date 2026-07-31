@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { useAppStore } from "@/store/use-app-store";
 import { categoryLabel, formatPrice } from "@/lib/utils";
+import { institutionShort } from "@/lib/tanzania-institutions";
 
 type RequestItem = {
   id: string;
@@ -223,7 +224,7 @@ export default function RequestsBoardPage() {
                     <span>
                       by {r.buyer.name}
                       {r.university || r.buyer.university
-                        ? ` · ${r.university || r.buyer.university}`
+                        ? ` · ${institutionShort(r.university || r.buyer.university)}`
                         : ""}
                     </span>
                     <span>{r.offerCount} offer{r.offerCount === 1 ? "" : "s"}</span>

@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAppStore } from "@/store/use-app-store";
 import { categoryLabel, formatPrice } from "@/lib/utils";
+import { institutionShort } from "@/lib/tanzania-institutions";
 
 type RequestDetail = {
   id: string;
@@ -282,7 +283,9 @@ export default function RequestDetailPage() {
           </p>
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
             <span>{budgetLabel(request.budgetMin, request.budgetMax)}</span>
-            {request.university ? <span>{request.university}</span> : null}
+            {request.university ? (
+              <span>{institutionShort(request.university)}</span>
+            ) : null}
             {request.deadline ? (
               <span>Needed by {new Date(request.deadline).toLocaleDateString()}</span>
             ) : null}
@@ -452,7 +455,9 @@ export default function RequestDetailPage() {
                       </p>
                       <p className="truncate text-xs text-muted">
                         @{o.developer.username}
-                        {o.developer.university ? ` · ${o.developer.university}` : ""}
+                        {o.developer.university
+                          ? ` · ${institutionShort(o.developer.university)}`
+                          : ""}
                       </p>
                     </div>
                   </div>

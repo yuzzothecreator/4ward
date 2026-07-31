@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { UserMenu } from "@/components/layout/user-menu";
 import { NotificationBell } from "@/components/layout/notification-bell";
+import { BrandLogo } from "@/components/brand-logo";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/use-app-store";
 
@@ -176,14 +177,7 @@ export function Navbar() {
     <header className="fixed inset-x-0 top-0 z-50 border-b border-border/80 bg-background/75 backdrop-blur-xl">
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-2 px-4 sm:px-6">
         <div className="flex min-w-0 items-center gap-8">
-          <Link href="/" className="flex shrink-0 items-center gap-1.5">
-            <span className="flex h-6 w-6 items-center justify-center rounded-md bg-foreground text-xs font-bold text-background">
-              4
-            </span>
-            <span className="text-[15px] font-medium tracking-tight text-foreground">
-              ward
-            </span>
-          </Link>
+          <BrandLogo size="sm" priority />
           <nav className="hidden items-center gap-0.5 md:flex">
             {links.map((link) => (
               <Link

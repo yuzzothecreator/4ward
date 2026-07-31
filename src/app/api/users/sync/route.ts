@@ -7,6 +7,7 @@ import {
   requireSameOrigin,
   sanitizeText,
 } from "@/lib/security";
+import { canonicalizeInstitution } from "@/lib/tanzania-institutions";
 
 export const dynamic = "force-dynamic";
 
@@ -90,7 +91,10 @@ export async function POST(req: Request) {
       avatar,
       role,
       minRole: intent,
-      university: sanitizeText(body.university || "", 120) || undefined,
+      university: (() => {
+        const raw = sanitizeText(body.university || "", 120);
+        return canonicalizeInstitution(raw) || raw || undefined;
+      })(),
       username: sanitizeText(body.username || "", 30) || undefined,
     });
 

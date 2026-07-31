@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BrandLogo } from "@/components/brand-logo";
 
 const columns = [
   {
@@ -47,12 +48,7 @@ export function Footer() {
       <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6">
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-6">
           <div className="lg:col-span-2">
-            <Link href="/" className="inline-flex items-center gap-1.5">
-              <span className="flex h-6 w-6 items-center justify-center rounded-md bg-foreground text-xs font-bold text-background">
-                4
-              </span>
-              <span className="text-[15px] font-medium text-foreground">ward</span>
-            </Link>
+            <BrandLogo size="md" />
             <p className="mt-4 max-w-xs text-[13px] leading-relaxed text-muted">
               The product system for campus creators. Sell source, docs, and demos after presentation.
             </p>

@@ -64,7 +64,7 @@ export default function ProfilePage() {
           email: user.email,
           name: name.trim(),
           username: username.trim(),
-          university: university.trim(),
+          university: canonicalizeInstitution(university) || university.trim(),
         }),
       });
       const data = await res.json();
@@ -72,16 +72,20 @@ export default function ProfilePage() {
         setSaveError(data.error || "Could not save profile");
         return;
       }
+      const savedUni =
+        canonicalizeInstitution(data.user?.university || university) ||
+        university.trim();
       useAppStore.setState({
         user: {
           ...user,
           name: data.user?.name || name.trim(),
           username: data.user?.username || username.trim(),
-          university: data.user?.university || university.trim(),
+          university: savedUni,
           verified: Boolean(data.user?.verified ?? user.verified),
           role: data.user?.role || user.role,
         },
       });
+      setUniversity(savedUni);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch {

@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { SignUp, useAuth } from "@clerk/nextjs";
+import { BrandLogo } from "@/components/brand-logo";
 
 function safeNext(raw: string | null) {
   if (!raw) return "/welcome";
@@ -31,11 +32,14 @@ export function ClerkSignUp() {
   }
 
   return (
-    <SignUp
-      routing="hash"
-      signInUrl={`/sign-in${dest !== "/welcome" ? `?next=${encodeURIComponent(dest)}` : ""}`}
-      forceRedirectUrl={dest}
-      fallbackRedirectUrl={dest}
-    />
+    <div className="flex w-full max-w-md flex-col items-center gap-6">
+      <BrandLogo size="lg" href={false} />
+      <SignUp
+        routing="hash"
+        signInUrl={`/sign-in${dest !== "/welcome" ? `?next=${encodeURIComponent(dest)}` : ""}`}
+        forceRedirectUrl={dest}
+        fallbackRedirectUrl={dest}
+      />
+    </div>
   );
 }

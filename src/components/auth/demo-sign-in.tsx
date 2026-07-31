@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useAppStore } from "@/store/use-app-store";
 import { DEMO_ADMIN_EMAIL, defaultRedirectForRole, isStaffRole } from "@/lib/rbac";
 import { clearAdminToken, ensureAdminSession } from "@/lib/admin-session";
+import { BrandLogo } from "@/components/brand-logo";
 
 function DemoSignInForm() {
   const router = useRouter();
@@ -48,6 +49,9 @@ function DemoSignInForm() {
   return (
     <Card className="w-full max-w-md border-border bg-card">
       <CardHeader className="text-center">
+        <div className="mb-3 flex justify-center">
+          <BrandLogo size="md" href={false} />
+        </div>
         <CardTitle>Sign in to 4ward</CardTitle>
         <CardDescription>
           Access your dashboard. Production admin uses the email from{" "}

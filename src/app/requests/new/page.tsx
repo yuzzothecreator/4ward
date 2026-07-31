@@ -12,6 +12,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAppStore } from "@/store/use-app-store";
 import { categoryLabel } from "@/lib/utils";
 import { RequireAuth } from "@/components/auth/require-auth";
+import { UniversitySelect } from "@/components/university-select";
+import { canonicalizeInstitution } from "@/lib/tanzania-institutions";
 
 const CATEGORIES = [
   "WEB_APPLICATIONS",
@@ -56,7 +58,11 @@ function NewRequestForm() {
           category,
           budgetMin: budgetMin || null,
           budgetMax: budgetMax || null,
-          university: university || user.university || null,
+          university:
+            canonicalizeInstitution(university) ||
+            university ||
+            user.university ||
+            null,
           deadline: deadline || null,
         }),
       });
@@ -162,14 +168,14 @@ function NewRequestForm() {
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <Label htmlFor="university">University</Label>
-                <Input
-                  id="university"
-                  className="mt-1.5"
-                  value={university}
-                  onChange={(e) => setUniversity(e.target.value)}
-                  placeholder="Your campus"
-                />
+                <Label htmlFor="university">University / institute</Label>
+                <div className="mt-1.5">
+                  <UniversitySelect
+                    id="university"
+                    value={university}
+                    onChange={setUniversity}
+                  />
+                </div>
               </div>
               <div>
                 <Label htmlFor="deadline">Needed by</Label>

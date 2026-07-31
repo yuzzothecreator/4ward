@@ -12,6 +12,7 @@ import { formatPrice } from "@/lib/utils";
 import { useAppStore } from "@/store/use-app-store";
 import { RequireAuth } from "@/components/auth/require-auth";
 import Link from "next/link";
+import { institutionShort } from "@/lib/tanzania-institutions";
 
 type PayMethod = "clickpesa" | "demo";
 
@@ -295,7 +296,10 @@ function CheckoutInner() {
           ) : user?.university ? (
             <p className="text-xs text-muted-foreground">
               Campus exclusivity: after you buy, other students from{" "}
-              <span className="text-foreground">{user.university}</span> cannot
+              <span className="text-foreground">
+                {institutionShort(user.university) || user.university}
+              </span>{" "}
+              cannot
               purchase this same project for 4 months (presentation window).
             </p>
           ) : (

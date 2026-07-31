@@ -140,7 +140,7 @@ export const useAppStore = create<AppState>()(
           name: name.trim(),
           email: normalized,
           username: usernameFromEmail(email, name),
-          university: university?.trim() || "University of Dar es Salaam",
+          university: university?.trim() || "UDSM",
           role: roleFromEmail(normalized, intent === "SELLER" ? "SELLER" : "BUYER"),
           createdAt: new Date().toISOString(),
         };
@@ -161,7 +161,7 @@ export const useAppStore = create<AppState>()(
                 name: name?.trim() || normalized.split("@")[0],
                 email: normalized,
                 username: usernameFromEmail(normalized, name || normalized),
-                university: existing?.university || "University of Dar es Salaam",
+                university: existing?.university || "UDSM",
                 role: roleFromEmail(normalized, "BUYER"),
                 createdAt: existing?.createdAt || new Date().toISOString(),
               };
@@ -274,7 +274,7 @@ export const useAppStore = create<AppState>()(
             name: user?.name || "Student Creator",
             username: user?.username || "creator",
             avatar: `https://api.dicebear.com/7.x/avataaars/png?seed=${encodeURIComponent(user?.email || "creator")}`,
-            university: user?.university || "University of Dar es Salaam",
+            university: user?.university || "UDSM",
             badges: applyVerifiedBadge(
               ["RISING_DEVELOPER"],
               Boolean(user?.verified)

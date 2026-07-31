@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatPrice, categoryLabel, formatNumber } from "@/lib/utils";
+import { institutionShort } from "@/lib/tanzania-institutions";
 import { ProjectCard } from "@/components/projects/project-card";
 import { PurchaseButton } from "@/components/projects/purchase-button";
 import { ProjectReviews } from "@/components/projects/project-reviews";
@@ -148,7 +149,10 @@ export default function ProjectDetailPage() {
                     </p>
                     <p className="flex items-center gap-1 truncate text-xs text-muted-foreground">
                       <GraduationCap className="h-3 w-3 shrink-0" />
-                      <span className="truncate">{project.seller.university}</span>
+                      <span className="truncate">
+                        {institutionShort(project.seller.university) ||
+                          project.seller.university}
+                      </span>
                     </p>
                   </div>
                 </Link>

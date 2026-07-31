@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ClerkWelcomeGate } from "@/components/auth/clerk-welcome-gate";
 import { useAppStore } from "@/store/use-app-store";
 import { hasPermission, isStaffRole } from "@/lib/rbac";
+import { BrandLogo } from "@/components/brand-logo";
 
 const clerkEnabled = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
 
@@ -72,6 +73,9 @@ function WelcomeInner() {
   return (
     <div className="mx-auto flex min-h-[70vh] max-w-3xl flex-col items-center justify-center px-4 py-16">
       <div className="mb-8 text-center">
+        <div className="mb-4 flex justify-center">
+          <BrandLogo size="lg" href={false} />
+        </div>
         <h1 className="text-3xl font-bold tracking-tight text-foreground">You&apos;re in</h1>
         <p className="mt-2 text-muted">What do you want to do on 4ward?</p>
       </div>

@@ -10,6 +10,7 @@ import { useAppStore } from "@/store/use-app-store";
 import { easeOutExpo } from "@/lib/motion";
 import { VerifiedTick } from "@/components/verified-tick";
 import type { DemoProject } from "@/lib/demo-data";
+import { institutionShort } from "@/lib/tanzania-institutions";
 
 /** Quiet product tile — Linear hairline border, used across catalog surfaces */
 export function ProjectCard({ project, index = 0 }: { project: DemoProject; index?: number }) {
@@ -61,7 +62,10 @@ export function ProjectCard({ project, index = 0 }: { project: DemoProject; inde
             {project.seller.badges?.includes("VERIFIED_CREATOR") ? (
               <VerifiedTick className="inline-block shrink-0 align-text-bottom" />
             ) : null}
-            <span className="min-w-0 truncate"> · {project.seller.university}</span>
+            <span className="min-w-0 truncate">
+              {" "}
+              · {institutionShort(project.seller.university) || project.seller.university}
+            </span>
           </p>
           <div className="flex items-center justify-between gap-2">
             <Badge variant="outline" className="font-normal">
