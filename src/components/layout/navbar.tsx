@@ -12,6 +12,7 @@ import { useAppStore } from "@/store/use-app-store";
 
 const links = [
   { href: "/marketplace", label: "Marketplace" },
+  { href: "/requests", label: "Requests" },
   { href: "/pricing", label: "Pricing" },
   { href: "/about", label: "About" },
   { href: "/sell", label: "Sell" },

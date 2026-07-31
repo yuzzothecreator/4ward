@@ -14,6 +14,7 @@ import {
   Package,
   BadgeCheck,
   Headphones,
+  Lightbulb,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -74,6 +75,12 @@ const navItems: NavItem[] = [
     href: "/dashboard/messages",
     label: "Messages",
     icon: MessageSquare,
+    permissions: ["dashboard:buyer"],
+  },
+  {
+    href: "/requests",
+    label: "Requests",
+    icon: Lightbulb,
     permissions: ["dashboard:buyer"],
   },
   {

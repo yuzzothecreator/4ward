@@ -80,6 +80,19 @@ enum VerificationStatus {
   REJECTED
 }
 
+enum ProjectRequestStatus {
+  OPEN
+  FULFILLED
+  CLOSED
+}
+
+enum ProjectOfferStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  WITHDRAWN
+}
+
 model User {
   id            String   @id @default(cuid())
   clerkId       String   @unique
@@ -113,6 +126,8 @@ model User {
   affiliateEarnings AffiliateEarning[]
   auditLogs     AuditLog[]
   verificationRequests VerificationRequest[]
+  projectRequests      ProjectRequest[]      @relation("BuyerRequests")
+  projectOffers        ProjectOffer[]        @relation("DeveloperOffers")
 
   @@index([role])
   @@index([username])
@@ -151,6 +166,7 @@ model Project {
   favorites   Favorite[]
   messages    Message[]
   reports     Report[]
+  offers      ProjectOffer[]
 
   @@index([status])
   @@index([category])
@@ -267,6 +283,53 @@ model VerificationRequest {
   @@index([userId])
   @@index([status])
   @@index([createdAt])
+}
+
+/** Buyer posts what they need; developers reply with offers. */
+model ProjectRequest {
+  id          String               @id @default(cuid())
+  buyerId     String
+  title       String
+  description String
+  category    ProjectCategory
+  budgetMin   Float?
+  budgetMax   Float?
+  university  String?
+  deadline    DateTime?
+  status      ProjectRequestStatus @default(OPEN)
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  buyer  User           @relation("BuyerRequests", fields: [buyerId], references: [id], onDelete: Cascade)
+  offers ProjectOffer[]
+
+  @@index([status])
+  @@index([category])
+  @@index([buyerId])
+  @@index([createdAt])
+}
+
+/** Developer response to a buyer request. */
+model ProjectOffer {
+  id             String             @id @default(cuid())
+  requestId      String
+  developerId    String
+  message        String
+  proposedPrice  Float?
+  deliveryDays   Int?
+  projectId      String?
+  status         ProjectOfferStatus @default(PENDING)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  request   ProjectRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  developer User           @relation("DeveloperOffers", fields: [developerId], references: [id], onDelete: Cascade)
+  project   Project?       @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@unique([requestId, developerId])
+  @@index([requestId])
+  @@index([developerId])
+  @@index([status])
 }
 
 model Message {
