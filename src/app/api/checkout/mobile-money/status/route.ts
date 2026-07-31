@@ -49,25 +49,34 @@ export async function GET(req: Request) {
 
     const paid = status === "SUCCESS" || status === "SETTLED";
     let purchase = null;
+    let fulfillError: string | undefined;
+    let fulfillCode: string | undefined;
 
     if (paid) {
       const result = await fulfillClickPesaOrder(orderReference);
-      if (result.ok) purchase = result.purchase;
+      if (result.ok) {
+        purchase = result.purchase;
+      } else {
+        fulfillError = result.error;
+        fulfillCode = "code" in result ? result.code : undefined;
+      }
     }
 
     const updated = getPendingPayment(orderReference);
 
     return NextResponse.json({
       orderReference,
-      status,
-      paid,
+      status: fulfillError ? "FAILED" : status,
+      paid: Boolean(purchase),
       channel: updated?.channel || latest?.channel,
       amount: updated?.amount ?? latest?.collectedAmount,
       currency: "TZS",
       projectId: updated?.projectId,
       slug: updated?.slug,
       title: updated?.title,
-      message: latest?.message || updated?.message,
+      message: fulfillError || latest?.message || updated?.message,
+      error: fulfillError,
+      code: fulfillCode,
       purchase,
     });
   } catch (err) {

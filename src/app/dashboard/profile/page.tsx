@@ -19,7 +19,19 @@ export default function ProfilePage() {
   const [skills, setSkills] = useState(["Next.js", "TypeScript", "Node.js"]);
   const [skillInput, setSkillInput] = useState("");
   const [saved, setSaved] = useState(false);
+  const [name, setName] = useState("");
+  const [username, setUsername] = useState("");
+  const [university, setUniversity] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const verified = Boolean(user?.verified);
+
+  useEffect(() => {
+    if (!user) return;
+    setName(user.name);
+    setUsername(user.username);
+    setUniversity(user.university);
+  }, [user]);
 
   useEffect(() => {
     if (!user?.email) return;
@@ -36,6 +48,46 @@ export default function ProfilePage() {
       cancelled = true;
     };
   }, [user?.email, setVerified]);
+
+  async function saveProfile() {
+    if (!user) return;
+    setSaving(true);
+    setSaveError("");
+    try {
+      const res = await fetch("/api/users/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({
+          email: user.email,
+          name: name.trim(),
+          username: username.trim(),
+          university: university.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setSaveError(data.error || "Could not save profile");
+        return;
+      }
+      useAppStore.setState({
+        user: {
+          ...user,
+          name: data.user?.name || name.trim(),
+          username: data.user?.username || username.trim(),
+          university: data.user?.university || university.trim(),
+          verified: Boolean(data.user?.verified ?? user.verified),
+          role: data.user?.role || user.role,
+        },
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch {
+      setSaveError("Network error saving profile");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   if (!user) {
     return (
@@ -94,19 +146,32 @@ export default function ProfilePage() {
         <CardContent className="space-y-4">
           <div>
             <Label>Name</Label>
-            <Input className="mt-1.5" defaultValue={user.name} key={`name-${user.email}`} />
+            <Input
+              className="mt-1.5"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
           </div>
           <div>
             <Label>Username</Label>
-            <Input className="mt-1.5" defaultValue={user.username} key={`u-${user.email}`} />
+            <Input
+              className="mt-1.5"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+            />
           </div>
           <div>
             <Label>University</Label>
             <Input
               className="mt-1.5"
-              defaultValue={user.university}
-              key={`uni-${user.email}`}
+              value={university}
+              onChange={(e) => setUniversity(e.target.value)}
+              placeholder="e.g. University of Dar es Salaam"
             />
+            <p className="mt-1 text-xs text-muted-foreground">
+              Used for campus exclusivity: one buyer per university per project
+              for 4 months.
+            </p>
           </div>
           <div>
             <Label>Role</Label>
@@ -168,13 +233,11 @@ export default function ProfilePage() {
             <Label>GitHub</Label>
             <Input className="mt-1.5" placeholder="https://github.com/" />
           </div>
-          <Button
-            onClick={() => {
-              setSaved(true);
-              setTimeout(() => setSaved(false), 2000);
-            }}
-          >
-            {saved ? "Saved!" : "Save profile"}
+          {saveError ? (
+            <p className="text-sm text-destructive">{saveError}</p>
+          ) : null}
+          <Button onClick={() => void saveProfile()} disabled={saving}>
+            {saving ? "Saving…" : saved ? "Saved!" : "Save profile"}
           </Button>
         </CardContent>
       </Card>

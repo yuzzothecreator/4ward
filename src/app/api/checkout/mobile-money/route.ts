@@ -9,12 +9,13 @@ import {
   previewUssdPush,
   savePendingPayment,
 } from "@/lib/clickpesa";
+import { checkUniversityExclusivityForEmail } from "@/lib/university-exclusivity";
 
 export const dynamic = "force-dynamic";
 
 /**
  * Start a ClickPesa USSD-PUSH mobile money collection.
- * Body: { projectId?, slug, phone, title?, price?, amount? }
+ * Body: { projectId?, slug, phone, title?, price?, amount?, email? }
  */
 export async function POST(req: Request) {
   try {
@@ -83,6 +84,33 @@ export async function POST(req: Request) {
       );
     }
 
+    const buyerEmail =
+      typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+    if (!buyerEmail) {
+      return NextResponse.json(
+        { error: "Sign in so we can apply campus purchase rules." },
+        { status: 401 }
+      );
+    }
+
+    const lock = await checkUniversityExclusivityForEmail({
+      email: buyerEmail,
+      projectId,
+      slug,
+      university:
+        typeof body.university === "string" ? body.university : undefined,
+    });
+    if (!lock.allowed) {
+      return NextResponse.json(
+        {
+          error: lock.message,
+          code: lock.code,
+          lockedUntil: "lockedUntil" in lock ? lock.lockedUntil : undefined,
+        },
+        { status: 409 }
+      );
+    }
+
     const orderReference = createOrderReference();
 
     const preview = await previewUssdPush({
@@ -138,7 +166,7 @@ export async function POST(req: Request) {
       title,
       amount,
       phoneNumber: phone,
-      buyerEmail: typeof body.email === "string" ? body.email : undefined,
+      buyerEmail,
       status: initiated.data.status || "PROCESSING",
       channel: initiated.data.channel,
       clickpesaId: initiated.data.id,

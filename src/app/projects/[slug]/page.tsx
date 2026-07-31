@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Star, ExternalLink, Code2, Download, GraduationCap, Shield } from "lucide-react";
+import { Star, ExternalLink, Code2, Download, GraduationCap, Shield, MessageSquare } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -183,6 +183,15 @@ export default function ProjectDetailPage() {
                     </Badge>
                   ))}
                 </div>
+                <Link
+                  href={`/dashboard/messages?peer=${encodeURIComponent(project.seller.id)}&project=${encodeURIComponent(project.id)}`}
+                  className="mt-4 block"
+                >
+                  <Button variant="outline" className="w-full" size="sm">
+                    <MessageSquare className="h-4 w-4" />
+                    Message seller
+                  </Button>
+                </Link>
               </CardContent>
             </Card>
           </div>

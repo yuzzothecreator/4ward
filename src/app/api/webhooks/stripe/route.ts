@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { stripe, calculateFees } from "@/lib/stripe";
-import { fulfillPurchase } from "@/lib/orders";
+import { fulfillPurchase, PurchaseBlockedError } from "@/lib/orders";
 import { demoProjects } from "@/lib/demo-data";
 
 export async function POST(req: Request) {
@@ -42,17 +42,35 @@ export async function POST(req: Request) {
           session.customer_email ||
           "buyer@example.com";
 
-        await fulfillPurchase({
-          buyerEmail: email,
-          buyerName: session.customer_details?.name || undefined,
-          projectId: project?.id || projectId,
-          slug: project?.slug || session.metadata?.slug || projectId,
-          title: project?.title || "4ward project",
-          amount,
-          paymentGateway: "stripe",
-          paymentReference: session.id,
-          affiliateCode: session.metadata?.affiliateCode || undefined,
-        });
+        try {
+          await fulfillPurchase({
+            buyerEmail: email,
+            buyerName: session.customer_details?.name || undefined,
+            projectId: project?.id || projectId,
+            slug: project?.slug || session.metadata?.slug || projectId,
+            title: project?.title || "4ward project",
+            amount,
+            paymentGateway: "stripe",
+            paymentReference: session.id,
+            affiliateCode: session.metadata?.affiliateCode || undefined,
+          });
+        } catch (err) {
+          if (err instanceof PurchaseBlockedError) {
+            console.warn("[audit] stripe.fulfill.university_blocked", {
+              sessionId: session.id,
+              code: err.code,
+              message: err.message,
+            });
+            // Acknowledge webhook so Stripe does not retry forever; payment may need manual refund.
+            return NextResponse.json({
+              received: true,
+              blocked: true,
+              code: err.code,
+              error: err.message,
+            });
+          }
+          throw err;
+        }
       }
     }
 

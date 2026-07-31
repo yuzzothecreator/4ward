@@ -46,6 +46,12 @@ function CheckoutInner() {
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
   const [channel, setChannel] = useState<string | undefined>();
+  const [campusLock, setCampusLock] = useState<{
+    allowed: boolean;
+    message?: string;
+    code?: string;
+    lockedUntil?: string;
+  } | null>(null);
 
   useEffect(() => {
     fetch("/api/checkout/methods")
@@ -58,6 +64,27 @@ function CheckoutInner() {
       })
       .catch(() => setMethod("demo"));
   }, []);
+
+  useEffect(() => {
+    if (!user?.email || !project || hasPurchased(project.id)) {
+      setCampusLock(null);
+      return;
+    }
+    let cancelled = false;
+    fetch(
+      `/api/purchases/availability?email=${encodeURIComponent(user.email)}&projectId=${encodeURIComponent(project.id)}&slug=${encodeURIComponent(project.slug)}&university=${encodeURIComponent(user.university || "")}`
+    )
+      .then((r) => r.json())
+      .then((data) => {
+        if (!cancelled) setCampusLock(data);
+      })
+      .catch(() => {
+        if (!cancelled) setCampusLock(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.email, project, hasPurchased]);
 
   useEffect(() => {
     if (successFlag && project && !hasPurchased(project.id)) {
@@ -139,6 +166,7 @@ function CheckoutInner() {
   const alreadyOwned = hasPurchased(project.id);
   const clickpesaReady = Boolean(methods?.clickpesa?.enabled);
   const stripeReady = Boolean(methods?.stripe?.enabled);
+  const campusBlocked = Boolean(campusLock && !campusLock.allowed);
 
   async function payWithClickPesa() {
     setError("");
@@ -155,6 +183,7 @@ function CheckoutInner() {
           price: project!.price,
           phone,
           email: user?.email,
+          university: user?.university,
         }),
       });
       const data = await res.json();
@@ -180,14 +209,23 @@ function CheckoutInner() {
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectId: project!.id, slug: project!.slug }),
+        body: JSON.stringify({
+          projectId: project!.id,
+          slug: project!.slug,
+          email: user?.email,
+          university: user?.university,
+        }),
       });
       const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Checkout blocked");
+        return;
+      }
       if (data.url) {
         window.location.href = data.url;
         return;
       }
-      setError(data.message || "Stripe checkout unavailable — try mobile money or demo.");
+      setError(data.message || data.error || "Stripe checkout unavailable — try mobile money or demo.");
     } catch {
       setError("Stripe checkout failed");
     } finally {
@@ -195,9 +233,47 @@ function CheckoutInner() {
     }
   }
 
-  function completeDemoPurchase() {
-    addPurchase(project!);
-    setDone(true);
+  async function completeDemoPurchase() {
+    if (!user?.email || !project) {
+      setError("Sign in to complete purchase");
+      return;
+    }
+    setError("");
+    setLoading(true);
+    try {
+      const res = await fetch("/api/checkout/demo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({
+          email: user.email,
+          projectId: project.id,
+          slug: project.slug,
+          title: project.title,
+          price: project.price,
+          university: user.university,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Could not complete purchase");
+        setCampusLock({
+          allowed: false,
+          message: data.error,
+          code: data.code,
+        });
+        return;
+      }
+      addPurchase(project, {
+        downloadToken: data.purchase?.downloadToken,
+        purchaseId: data.purchase?.id,
+      });
+      setDone(true);
+    } catch {
+      setError("Network error completing purchase");
+    } finally {
+      setLoading(false);
+    }
   }
 
   if (done || alreadyOwned) {
@@ -237,8 +313,41 @@ function CheckoutInner() {
             </span>
           </div>
 
+          {campusBlocked && campusLock?.message ? (
+            <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-100">
+              <p>{campusLock.message}</p>
+              {campusLock.code === "UNIVERSITY_REQUIRED" ? (
+                <Link
+                  href="/dashboard/profile"
+                  className="mt-1 inline-block text-xs font-medium underline"
+                >
+                  Add university in profile
+                </Link>
+              ) : null}
+            </div>
+          ) : user?.university ? (
+            <p className="text-xs text-muted-foreground">
+              Campus exclusivity: after you buy, other students from{" "}
+              <span className="text-foreground">{user.university}</span> cannot
+              purchase this same project for 4 months (presentation window).
+            </p>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Set your university in{" "}
+              <Link href="/dashboard/profile" className="underline">
+                profile
+              </Link>{" "}
+              before checkout — required for campus purchase rules.
+            </p>
+          )}
+
           {project.price === 0 ? (
-            <Button className="w-full" onClick={completeDemoPurchase}>
+            <Button
+              className="w-full"
+              onClick={completeDemoPurchase}
+              disabled={loading || campusBlocked}
+            >
+              {loading && <Loader2 className="h-4 w-4 animate-spin" />}
               Get free access
             </Button>
           ) : (
@@ -328,7 +437,7 @@ function CheckoutInner() {
                   )}
                   <Button
                     className="w-full text-sm leading-snug"
-                    disabled={loading || polling || !phone.trim()}
+                    disabled={loading || polling || !phone.trim() || campusBlocked}
                     onClick={payWithClickPesa}
                   >
                     {(loading || polling) && (
@@ -349,14 +458,23 @@ function CheckoutInner() {
               )}
 
               {method === "stripe" && (
-                <Button className="w-full" disabled={loading} onClick={payWithStripe}>
+                <Button
+                  className="w-full"
+                  disabled={loading || campusBlocked}
+                  onClick={payWithStripe}
+                >
                   {loading && <Loader2 className="h-4 w-4 animate-spin" />}
                   Pay {formatPrice(project.price)} with card
                 </Button>
               )}
 
               {method === "demo" && (
-                <Button className="w-full" onClick={completeDemoPurchase}>
+                <Button
+                  className="w-full"
+                  onClick={completeDemoPurchase}
+                  disabled={loading || campusBlocked}
+                >
+                  {loading && <Loader2 className="h-4 w-4 animate-spin" />}
                   Complete demo purchase
                 </Button>
               )}

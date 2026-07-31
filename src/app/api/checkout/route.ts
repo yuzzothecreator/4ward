@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { demoProjects } from "@/lib/demo-data";
 import { createCheckoutSession } from "@/lib/stripe";
+import { checkUniversityExclusivityForEmail } from "@/lib/university-exclusivity";
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { projectId, slug, affiliateCode } = body;
+    const { projectId, slug, affiliateCode, email } = body;
 
     const project =
       demoProjects.find((p) => p.id === projectId) ||
@@ -29,6 +30,29 @@ export async function POST(req: Request) {
       });
     }
 
+    const buyerEmail =
+      typeof email === "string" ? email.trim().toLowerCase() : "";
+    if (buyerEmail) {
+      const lock = await checkUniversityExclusivityForEmail({
+        email: buyerEmail,
+        projectId: project.id,
+        slug: project.slug,
+        university:
+          typeof body.university === "string" ? body.university : undefined,
+      });
+      if (!lock.allowed) {
+        return NextResponse.json(
+          {
+            url: null,
+            error: lock.message,
+            code: lock.code,
+            lockedUntil: "lockedUntil" in lock ? lock.lockedUntil : undefined,
+          },
+          { status: 409 }
+        );
+      }
+    }
+
     if (!process.env.STRIPE_SECRET_KEY) {
       return NextResponse.json({
         url: null,
@@ -42,7 +66,7 @@ export async function POST(req: Request) {
       projectId: project.id,
       projectTitle: project.title,
       amount: project.price,
-      buyerEmail: "buyer@example.com",
+      buyerEmail: buyerEmail || "buyer@example.com",
       successUrl: `${origin}/checkout?project=${project.slug}&success=1`,
       cancelUrl: `${origin}/projects/${project.slug}`,
       affiliateCode,

@@ -7,10 +7,27 @@ import {
   getPendingPayment,
   updatePendingPayment,
 } from "@/lib/clickpesa";
+import { checkUniversityExclusivity } from "@/lib/university-exclusivity";
 
+export class PurchaseBlockedError extends Error {
+  code: string;
+  details?: Record<string, unknown>;
+
+  constructor(
+    message: string,
+    code = "PURCHASE_BLOCKED",
+    details?: Record<string, unknown>
+  ) {
+    super(message);
+    this.name = "PurchaseBlockedError";
+    this.code = code;
+    this.details = details;
+  }
+}
 export type FulfillPurchaseInput = {
   buyerEmail: string;
   buyerName?: string;
+  buyerUniversity?: string;
   projectId: string;
   slug: string;
   title: string;
@@ -85,6 +102,7 @@ export async function fulfillPurchase(
     name: input.buyerName,
     clerkId: `local_${email}`,
     minRole: "BUYER",
+    university: input.buyerUniversity,
   });
   const buyer = buyerResult.user;
   if (!buyer) {
@@ -175,6 +193,20 @@ export async function fulfillPurchase(
 
   if (!project) {
     throw new Error("Could not resolve project for purchase");
+  }
+
+  // Campus exclusivity: one buyer per university per project for 4 months
+  const lock = await checkUniversityExclusivity({
+    projectId: project.id,
+    buyerId: buyer.id,
+    buyerUniversity: buyer.university,
+  });
+  if (!lock.allowed) {
+    throw new PurchaseBlockedError(lock.message, lock.code, {
+      lockedUntil: "lockedUntil" in lock ? lock.lockedUntil : undefined,
+      holderName: "holderName" in lock ? lock.holderName : undefined,
+      university: "university" in lock ? lock.university : undefined,
+    });
   }
 
   // Ensure source file path exists for downloads
@@ -290,22 +322,38 @@ export async function fulfillClickPesaOrder(orderReference: string) {
     pending.buyerEmail ||
     `buyer_${pending.phoneNumber.slice(-6)}@4ward.mobile`;
 
-  const fulfilled = await fulfillPurchase({
-    buyerEmail: email,
-    buyerName: email.split("@")[0],
-    projectId: pending.projectId,
-    slug: pending.slug,
-    title: pending.title,
-    amount: pending.amount,
-    paymentGateway: "clickpesa",
-    paymentReference: orderReference,
-    phone: pending.phoneNumber,
-  });
+  try {
+    const fulfilled = await fulfillPurchase({
+      buyerEmail: email,
+      buyerName: email.split("@")[0],
+      projectId: pending.projectId,
+      slug: pending.slug,
+      title: pending.title,
+      amount: pending.amount,
+      paymentGateway: "clickpesa",
+      paymentReference: orderReference,
+      phone: pending.phoneNumber,
+    });
 
-  updatePendingPayment(orderReference, {
-    status: "SUCCESS",
-    message: "Fulfilled",
-  });
+    updatePendingPayment(orderReference, {
+      status: "SUCCESS",
+      message: "Fulfilled",
+    });
 
-  return { ok: true as const, purchase: fulfilled, pending };
+    return { ok: true as const, purchase: fulfilled, pending };
+  } catch (err) {
+    if (err instanceof PurchaseBlockedError) {
+      updatePendingPayment(orderReference, {
+        status: "FAILED",
+        message: err.message,
+      });
+      return {
+        ok: false as const,
+        error: err.message,
+        code: err.code,
+        details: err.details,
+      };
+    }
+    throw err;
+  }
 }
