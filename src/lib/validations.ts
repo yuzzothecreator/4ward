@@ -25,8 +25,8 @@ export const projectSchema = z.object({
 
 export const reviewSchema = z.object({
   rating: z.coerce.number().min(1).max(5),
-  comment: z.string().min(10).max(1000).optional(),
-  projectId: z.string(),
+  comment: z.string().min(10, "Comment must be at least 10 characters").max(1000),
+  projectId: z.string().min(1),
 });
 
 export const profileSchema = z.object({

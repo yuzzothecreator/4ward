@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Star, ExternalLink, Code2, Download, GraduationCap, Shield } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,8 +20,19 @@ export default function ProjectDetailPage() {
   const listings = useAppStore((s) => s.listings);
   const getCatalog = useAppStore((s) => s.getCatalog);
   const getProjectBySlug = useAppStore((s) => s.getProjectBySlug);
+  const [reviewStats, setReviewStats] = useState<{ average: number; count: number } | null>(
+    null
+  );
 
   const project = useMemo(() => getProjectBySlug(slug), [slug, listings, getProjectBySlug]);
+
+  const onReviewStats = useCallback((stats: { average: number; count: number }) => {
+    setReviewStats(stats);
+  }, []);
+
+  useEffect(() => {
+    setReviewStats(null);
+  }, [slug]);
 
   const related = useMemo(() => {
     if (!project) return [];
@@ -29,6 +40,9 @@ export default function ProjectDetailPage() {
       .filter((p) => p.category === project.category && p.id !== project.id)
       .slice(0, 3);
   }, [project, listings, getCatalog]);
+
+  const displayRating = reviewStats && reviewStats.count > 0 ? reviewStats.average : 0;
+  const displayReviewCount = reviewStats ? reviewStats.count : 0;
 
   if (!project) {
     return (
@@ -92,9 +106,11 @@ export default function ProjectDetailPage() {
                 <div className="min-w-0">
                   <p className="flex items-center justify-center gap-1 text-lg font-bold text-amber-400 sm:text-2xl">
                     <Star className="h-4 w-4 fill-amber-400 sm:h-5 sm:w-5" />
-                    {project.rating}
+                    {displayReviewCount > 0 ? displayRating : "—"}
                   </p>
-                  <p className="text-[10px] text-muted-foreground sm:text-xs">{project.reviewCount} reviews</p>
+                  <p className="text-[10px] text-muted-foreground sm:text-xs">
+                    {displayReviewCount} {displayReviewCount === 1 ? "review" : "reviews"}
+                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -167,7 +183,13 @@ export default function ProjectDetailPage() {
         </div>
 
         <div className="mt-10">
-          <ProjectReviews projectId={project.id} />
+          <ProjectReviews
+            projectId={project.id}
+            slug={project.slug}
+            title={project.title}
+            price={project.price}
+            onStats={onReviewStats}
+          />
         </div>
 
         {related.length > 0 && (
